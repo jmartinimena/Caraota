@@ -8,7 +8,7 @@ Caraota.NET es un motor de interceptación de red diseñado para la investigaci�
 
 ## 🚀 Benchmarks de Rendimiento
 
-Hemos llevado el rendimiento al límite técnico de C# y .NET 8, reduciendo el tiempo de procesamiento por paquete de **1,000,000 ns** a solo **~80,000 ns**.
+He llevado el rendimiento al límite técnico de C# y .NET 8, reduciendo el tiempo de procesamiento por paquete de **1,000,000 ns** a solo **~80,000 ns**.
 
 | Componente | Optimización | Impacto |
 | :--- | :--- | :--- |
