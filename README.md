@@ -39,7 +39,6 @@ El motor está diseñado para evitar el Garbage Collector (GC) en el "Hot Path":
 Implementación nativa y optimizada del protocolo de MapleStory:
 * **Custom Shanda**: Rediseñado con rotación de bits (`ROL`) y carga en registros locales para máxima velocidad.
 * **Fast Header Generation**: Generación de cabeceras mediante `BinaryPrimitives` y operaciones bitwise, eliminando divisiones y módulos lentos.
-* **Double IV Sync**: Sistema inteligente que utiliza `LastIV` para recuperar la sincronía en caso de ráfagas de paquetes o micro-retrasos.
 
 ---
 
