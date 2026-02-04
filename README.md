@@ -60,7 +60,7 @@ El proyecto está dividido siguiendo principios de responsabilidad única y esta
 
 ```bash
 # Clonar el repositorio
-git clone [https://github.com/jmartinimena/Caraota.NET.git](https://github.com/jmartinimena/Caraota.NET.git)
+git clone [https://github.com/jmartinimena/Caraota.git](https://github.com/jmartinimena/Caraota.git)
 
 # Compilar en modo Release para máximo rendimiento
 dotnet build -c Release
