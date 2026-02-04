@@ -1,0 +1,12 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+  </Configurations>
+  <Project Path="Caraota.Crypto/Caraota.Crypto.csproj">
+    <Platform Solution="*|x64" Project="x64" />
+  </Project>
+  <Project Path="Caraota.NET/Caraota.NET.csproj">
+    <Platform Solution="*|x64" Project="x64" />
+  </Project>
+</Solution>
