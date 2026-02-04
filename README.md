@@ -64,3 +64,17 @@ git clone [https://github.com/jmartinimena/Caraota.NET.git](https://github.com/j
 
 # Compilar en modo Release para máximo rendimiento
 dotnet build -c Release
+```
+
+## ⚠️ Descargo de Responsabilidad (Disclaimer)
+
+**POR FAVOR, LEA ESTO ATENTAMENTE ANTES DE UTILIZAR EL SOFTWARE.**
+
+Este software, **Caraota**, se proporciona exclusivamente con fines **educativos, de investigación y de auditoría de seguridad de redes**. Al utilizar esta herramienta, usted acepta los siguientes términos:
+
+1. **Uso Bajo su Propio Riesgo**: El autor de este software no se hace responsable de ningún daño, pérdida de datos, baneo de cuentas o consecuencias legales que resulten del uso de esta herramienta. El usuario asume toda la responsabilidad por las acciones realizadas con el software.
+2. **Cumplimiento de Términos de Servicio**: El uso de herramientas de interceptación y manipulación de paquetes (MITM/Hijacking) puede violar los Términos de Servicio (ToS) de proveedores de juegos, servidores y servicios de red. El autor no fomenta ni respalda el uso de Caraota.NET para actividades que infrinjan acuerdos de licencia.
+3. **Sin Garantías**: El software se distribuye "TAL CUAL" (AS IS), sin garantías de ningún tipo, expresas o implícitas, incluyendo, pero no limitado a, garantías de funcionamiento o idoneidad para un propósito específico.
+4. **Finalidad Ética**: Esta herramienta fue diseñada para ayudar a desarrolladores y entusiastas de la ciberseguridad a comprender mejor el protocolo de red de MapleStory v62 y la arquitectura de red de alto rendimiento en .NET. No está destinada a ser utilizada para el beneficio desleal, robo de datos o interrupción de servicios de terceros.
+
+**Si no está de acuerdo con estos términos, debe eliminar este software de su sistema de inmediato.**
