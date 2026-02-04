@@ -2,7 +2,7 @@
 
 **Ultra-High-Performance Packet Interceptor & Logger for MapleStory v62**
 
-Caraota.NET es un motor de interceptación de red diseñado para la investigación de protocolos en servidores privados de MapleStory (específicamente v62). Caraota está optimizado para procesar paquetes en la escala de **nanosegundos**, garantizando una latencia casi nula y una estabilidad total del vector de inicialización (IV).
+Caraota es un motor de interceptación de red diseñado para la investigación de protocolos en servidores privados de MapleStory (específicamente v62). Caraota está optimizado para procesar paquetes en la escala de **nanosegundos**, garantizando una latencia casi nula y una estabilidad total del vector de inicialización (IV).
 
 ---
 
