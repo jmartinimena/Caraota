@@ -1,6 +1,7 @@
 ﻿using System.Threading.Channels;
 
 using Caraota.NET.Events;
+using Caraota.NET.Performance;
 
 namespace Caraota.NET.Interception
 {
@@ -41,6 +42,7 @@ namespace Caraota.NET.Interception
                 finally
                 {
                     args.Packet.Dispose();
+                    Pools.MaplePackets.Return(args.Packet);
                 }
             }
         }

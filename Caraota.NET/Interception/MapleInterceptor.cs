@@ -2,12 +2,15 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
+using Microsoft.Extensions.ObjectPool;
+
 using Caraota.NET.TCP;
 using Caraota.NET.Events;
 using Caraota.NET.Models;
 
 using Caraota.Crypto.Packets;
 using Caraota.Crypto.Processing;
+using Caraota.NET.Performance;
 
 namespace Caraota.NET.Interception
 {
@@ -27,6 +30,8 @@ namespace Caraota.NET.Interception
 
         private readonly Stopwatch _sw = new();
         private readonly PacketReassembler _reassembler = new();
+
+        
 
         public void StartListening(int port)
         {
@@ -132,9 +137,10 @@ namespace Caraota.NET.Interception
         {
             HijackManager.ProcessQueue(ref args, isIncoming: false);
 
-            var maplePacket = new MaplePacket(args.DecodedPacket);
-            var maplePacketEventArgs = new MaplePacketEventArgs(maplePacket, args.Hijacked);
-            PacketDispatcher.Enqueue(maplePacketEventArgs);
+            var maplePacket = Pools.MaplePackets.Get();
+            maplePacket.Initialize(args.DecodedPacket);
+
+            PacketDispatcher.Enqueue(new MaplePacketEventArgs(maplePacket, args.Hijacked));
 
             if (!ProcessLeftovers(args, isIncoming: false))
             {
@@ -146,9 +152,10 @@ namespace Caraota.NET.Interception
         {
             HijackManager.ProcessQueue(ref args, isIncoming: true);
 
-            var maplePacket = new MaplePacket(args.DecodedPacket);
-            var maplePacketEventArgs = new MaplePacketEventArgs(maplePacket, args.Hijacked);
-            PacketDispatcher.Enqueue(maplePacketEventArgs);
+            var maplePacket = Pools.MaplePackets.Get();
+            maplePacket.Initialize(args.DecodedPacket);
+
+            PacketDispatcher.Enqueue(new MaplePacketEventArgs(maplePacket, args.Hijacked));
 
             if (!ProcessLeftovers(args, isIncoming: true))
             {
@@ -158,7 +165,6 @@ namespace Caraota.NET.Interception
 
         private void OnHandshakeMITM(object? sender, HandshakePacketEventArgs args)
         {
-
             _ = OnHandshake?.Invoke(new HandshakeEventArgs(args));
 
             _tcpStack!.ModifyAndSend(args.MapleSessionEventArgs, args.Packet, isIncoming: true);

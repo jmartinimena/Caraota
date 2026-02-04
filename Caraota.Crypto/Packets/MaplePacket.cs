@@ -28,7 +28,11 @@ namespace Caraota.Crypto.Packets
         public string PayloadStr => Convert.ToHexString(Payload.Span);
         public string ToHexString() => Convert.ToHexString(Data.Span);
         public string FormattedTime => PacketUtils.GetRealTime(_timestamp).ToString("HH:mm:ss:fff");
-        public MaplePacket(DecodedPacket maplePacket)
+
+        // Constructor sin parametros para el ObjectPool
+        public MaplePacket() { }
+
+        public void Initialize(DecodedPacket maplePacket)
         {
             DataLen = maplePacket.Data.Length;
             IvLen = maplePacket.IV.Length;
@@ -47,7 +51,6 @@ namespace Caraota.Crypto.Packets
             Opcode = BinaryPrimitives.ReadUInt16LittleEndian(_fullBuffer.AsSpan(DataLen + IvLen + HeaderLen, 2));
 
             IsIncoming = maplePacket.IsIncoming;
-            _timestamp = Stopwatch.GetTimestamp();
         }
 
         public string Predict() => PacketUtils.Predict(Payload);
