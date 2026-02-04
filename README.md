@@ -1,5 +1,7 @@
 <div align="center">
   
+<img width="96" height="96" alt="caraota-logo" src="https://github.com/user-attachments/assets/d68c7a6e-3042-4559-b4f1-2f7ff7b2337a" />
+
 # Caraota
 
 ![GitHub last commit](https://img.shields.io/github/last-commit/jmartinimena/Caraota?style=flat&color=brightgreen)
