@@ -1,17 +1,16 @@
-﻿using System.Reflection;
+﻿using Caraota.NET.Events;
 using System.Buffers.Binary;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-
 using WinDivertSharp;
-
-using Caraota.NET.Events;
 
 namespace Caraota.NET.Interception
 {
-    internal sealed class WinDivertWrapper : IDisposable
+    internal sealed class WinDivertWrapper : IWinDivertSender, IDisposable
     {
         public delegate void PacketEventHandler(WinDivertPacketEventArgs args);
 
@@ -159,7 +158,7 @@ namespace Caraota.NET.Interception
             WinDivert.WinDivertHelperCalcChecksums(_sendBuffer, (uint)packet.Length, ref address, WinDivertChecksumHelperParam.All);
 
             if (log)
-                Console.WriteLine($"Construido: {Convert.ToHexString(_sendBuffer.AsSpan((uint)packet.Length))}");
+                Debug.WriteLine($"Construido: {Convert.ToHexString(_sendBuffer.AsSpan((uint)packet.Length))}");
 
             bool success = WinDivert.WinDivertSend(
                 _handle,

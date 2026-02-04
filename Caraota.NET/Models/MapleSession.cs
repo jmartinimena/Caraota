@@ -1,10 +1,13 @@
 ﻿using System.Buffers.Binary;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+
 using Caraota.Crypto;
 using Caraota.Crypto.Packets;
 using Caraota.Crypto.Processing;
+
 using Caraota.NET.Events;
+using Caraota.NET.Exceptions;
 
 namespace Caraota.NET.Models;
 
@@ -159,11 +162,4 @@ public sealed class MapleSession
             throw new InvalidOperationException("Session not initialized. Call InitSession first.");
         }
     }
-}
-
-public class MapleSessionException : Exception
-{
-    public MapleSessionException(string message) : base(message) { }
-    public MapleSessionException(string message, Exception innerException)
-        : base(message, innerException) { }
 }

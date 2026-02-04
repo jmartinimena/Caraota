@@ -1,5 +1,7 @@
 ﻿using System.Text;
+using System.Diagnostics;
 using System.Buffers.Binary;
+
 using Caraota.Crypto.Packets;
 
 namespace Caraota.Crypto.Processing
@@ -83,7 +85,7 @@ namespace Caraota.Crypto.Processing
 
             if (current == null)
             {
-                Console.WriteLine($"[ERROR-PREDICTOR] No se pudo encontrar un camino válido para el paquete de longitud {dataLength}");
+                Debug.WriteLine($"[ERROR-PREDICTOR] No se pudo encontrar un camino válido para el paquete de longitud {dataLength}");
                 _structure = "CORRUPTED";
                 return;
             }
@@ -141,12 +143,13 @@ namespace Caraota.Crypto.Processing
             }
         }
 
-        private List<TypeChecker> GetTypeCheckers() => new List<TypeChecker> {
-        new StringChecker(),
-        new IntChecker(),
-        new ShortChecker(),
-        new ByteChecker()
-    };
+        private List<TypeChecker> GetTypeCheckers() => 
+        [
+            new StringChecker(),
+            new IntChecker(),
+            new ShortChecker(),
+            new ByteChecker()
+        ];
 
         // --- CLASES DE VALIDACIÓN (TYPE CHECKERS) ---
 
