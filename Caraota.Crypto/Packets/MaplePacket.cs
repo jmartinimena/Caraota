@@ -6,9 +6,8 @@ namespace Caraota.Crypto.Packets
 {
     public class MaplePacket : IDisposable
     {
+        private long _timestamp;
         private byte[]? _fullBuffer;
-
-        private readonly long _timestamp = Stopwatch.GetTimestamp();
 
         public int DataLen { get; private set; }
         public int IvLen { get; private set; }
@@ -53,6 +52,8 @@ namespace Caraota.Crypto.Packets
             Opcode = BinaryPrimitives.ReadUInt16LittleEndian(_fullBuffer.AsSpan(DataLen + IvLen + HeaderLen, 2));
 
             IsIncoming = maplePacket.IsIncoming;
+
+            _timestamp = Stopwatch.GetTimestamp();
         }
 
         public string Predict() => PacketUtils.Predict(Payload);

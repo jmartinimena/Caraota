@@ -1,14 +1,15 @@
-﻿using Caraota.NET.Events;
-using Caraota.NET.Utils;
+﻿using System.Reflection;
+using System.Diagnostics;
 using System.Buffers.Binary;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Linq.Expressions;
-using System.Reflection;
-using System.Runtime;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
+
 using WinDivertSharp;
+
+using Caraota.NET.Events;
+using Caraota.NET.Utils;
 
 namespace Caraota.NET.Interception
 {
@@ -48,8 +49,6 @@ namespace Caraota.NET.Interception
 
         public void Start()
         {
-            Interop.SetThreadAffinity(2);
-
             if (_isRunning) return;
 
             _isRunning = true;
@@ -65,25 +64,18 @@ namespace Caraota.NET.Interception
 
         private void CaptureLoop()
         {
-            WinDivertAddress address = new();
-            using WinDivertBuffer buffer = new();
+            // Evitamos el nucleo 0 porque es donde Windows suele meter toda la carga del sistema
+            Interop.SetThreadAffinity(2);
+
+            WinDivertAddress address = default;
+            WinDivertBuffer buffer = new();
 
             while (_isRunning)
             {
                 uint readLen = 0;
-
-                bool success = WinDivert.WinDivertRecv(
-                    _handle,
-                    buffer,
-                    ref address,
-                    ref readLen);
-
-                if (success)
+                if (WinDivert.WinDivertRecv(_handle, buffer, ref address, ref readLen))
                 {
-                    if (readLen > 0 && readLen <= buffer.Length)
-                    {
-                        ProcessPacket(buffer, address, readLen);
-                    }
+                    ProcessPacket(buffer, address, readLen);
                 }
                 else
                 {
@@ -91,6 +83,8 @@ namespace Caraota.NET.Interception
                     break;
                 }
             }
+
+            buffer.Dispose();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -100,26 +94,22 @@ namespace Caraota.NET.Interception
         private void ProcessPacket(WinDivertBuffer buffer, WinDivertAddress address, uint len)
         {
             if (IsOutbound(address))
-            {
                 ProcessOutboundPacket(buffer, address, len);
-            }
             else
-            {
                 ProcessInboundPacket(buffer, address, len);
-            }
         }
 
         private void ProcessOutboundPacket(WinDivertBuffer buffer, WinDivertAddress address, uint len)
         {
-            var args = new WinDivertPacketEventArgs(buffer.AsSpan(len), address);
-            OnOutboundPacket!.Invoke(args);
+            OnOutboundPacket!.Invoke(new WinDivertPacketEventArgs(buffer.AsSpan(len), address));
         }
 
         private uint _lastInboundSeq = 0;
         private void ProcessInboundPacket(WinDivertBuffer buffer, WinDivertAddress address, uint len)
         {
             var span = buffer.AsSpan(len);
-            uint currentSeq = BinaryPrimitives.ReadUInt32BigEndian(span.Slice(24, 4));
+            int ipH = (span[0] & 0x0F) << 2;
+            uint currentSeq = BinaryPrimitives.ReadUInt32BigEndian(span.Slice(ipH + 4, 4));
 
             if (currentSeq == _lastInboundSeq)
             {
@@ -129,8 +119,7 @@ namespace Caraota.NET.Interception
 
             _lastInboundSeq = currentSeq;
 
-            var args = new WinDivertPacketEventArgs(span, address);
-            OnInboundPacket!.Invoke(args);
+            OnInboundPacket!.Invoke(new WinDivertPacketEventArgs(span, address));
         }
 
         private void HandleWinDivertError()
@@ -152,7 +141,7 @@ namespace Caraota.NET.Interception
             }
         }
 
-        private WinDivertBuffer _sendBuffer = new();
+        private readonly WinDivertBuffer _sendBuffer = new();
         public void SendPacket(ReadOnlySpan<byte> packet, WinDivertAddress address, bool log = false)
         {
             if (packet.Length <= 0) return;
@@ -164,13 +153,7 @@ namespace Caraota.NET.Interception
             if (log)
                 Debug.WriteLine($"Construido: {Convert.ToHexString(_sendBuffer.AsSpan((uint)packet.Length))}");
 
-            bool success = WinDivert.WinDivertSend(
-                _handle,
-                _sendBuffer,
-                (uint)packet.Length,
-                ref address);
-
-            if (!success)
+            if (!WinDivert.WinDivertSend(_handle, _sendBuffer, (uint)packet.Length, ref address))
                 ThrowLastWin32Error();
         }
 

@@ -1,4 +1,5 @@
-﻿using System.Buffers.Binary;
+﻿using System.Buffers;
+using System.Buffers.Binary;
 
 using Caraota.NET.Events;
 using Caraota.NET.Interception;
@@ -11,6 +12,7 @@ namespace Caraota.NET.TCP
 
         private ushort _fakeSeq = 0, _fakeAck = 0;
 
+        private byte[] _tcpPacketBuffer = ArrayPool<byte>.Shared.Rent(65536);
         public void ModifyAndSend(MapleSessionEventArgs args, ReadOnlySpan<byte> maplePacket, bool isIncoming)
         {
             int ipH = (args.WinDivertPacket[0] & 0x0F) << 2;
@@ -18,7 +20,7 @@ namespace Caraota.NET.TCP
             int totalHeader = ipH + tcpH;
             int totalSize = totalHeader + maplePacket.Length;
 
-            Span<byte> newTcpSpan = new byte[totalSize];
+            Span<byte> newTcpSpan = _tcpPacketBuffer.AsSpan(0, totalSize);
 
             args.WinDivertPacket[..totalHeader].CopyTo(newTcpSpan[..totalHeader]);
             maplePacket.CopyTo(newTcpSpan[totalHeader..]);
