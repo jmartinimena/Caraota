@@ -2,15 +2,13 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
-using Microsoft.Extensions.ObjectPool;
-
 using Caraota.NET.TCP;
 using Caraota.NET.Events;
 using Caraota.NET.Models;
+using Caraota.NET.Performance;
 
 using Caraota.Crypto.Packets;
 using Caraota.Crypto.Processing;
-using Caraota.NET.Performance;
 
 namespace Caraota.NET.Interception
 {
@@ -30,8 +28,6 @@ namespace Caraota.NET.Interception
 
         private readonly Stopwatch _sw = new();
         private readonly PacketReassembler _reassembler = new();
-
-        
 
         public void StartListening(int port)
         {
@@ -89,42 +85,6 @@ namespace Caraota.NET.Interception
 
             double ns = _sw.Elapsed.TotalNanoseconds;
             LogDiagnostic(ns);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static bool TryExtractPayload(ReadOnlySpan<byte> tcpPacket, out ReadOnlySpan<byte> payload)
-        {
-            int ipH = (tcpPacket[0] & 0x0F) << 2;
-            int tcpH = ((tcpPacket[ipH + 12] & 0xF0) >> 4) << 2;
-
-            int offset = ipH + tcpH;
-            int len = tcpPacket.Length - offset;
-
-            if (len <= 0) { payload = default; return false; }
-
-            payload = tcpPacket.Slice(offset, len);
-            return true;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private bool HandleSessionState(WinDivertPacketEventArgs winDivertPacket, ReadOnlySpan<byte> payload)
-        {
-            if (!_session!.SessionSuccess)
-            {
-                Debug.WriteLine($"[Session] Intentando sincronizar Handshake. Payload Len: {payload.Length}");
-                _session.InitSession(winDivertPacket, payload);
-                return false;
-            }
-            return true;
-        }
-
-        private void ProcessMaplePacket(WinDivertPacketEventArgs winDivertPacket, ReadOnlySpan<byte> payload, bool isIncoming)
-        {
-            var cryptoSession = isIncoming ? _session!.ServerRecv! : _session!.ClientRecv!;
-
-            var packet = PacketFactory.Parse(payload, cryptoSession.IV.Span, isIncoming);
-
-            _session.DecryptPacket(winDivertPacket, packet, isIncoming);
         }
 
         [Conditional("DEBUG")]
@@ -204,6 +164,44 @@ namespace Caraota.NET.Interception
             return true;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool TryExtractPayload(ReadOnlySpan<byte> tcpPacket, out ReadOnlySpan<byte> payload)
+        {
+            int ipH = (tcpPacket[0] & 0x0F) << 2;
+            int tcpH = ((tcpPacket[ipH + 12] & 0xF0) >> 4) << 2;
+
+            int offset = ipH + tcpH;
+            int len = tcpPacket.Length - offset;
+
+            if (len <= 0) { payload = default; return false; }
+
+            payload = tcpPacket.Slice(offset, len);
+            return true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool HandleSessionState(WinDivertPacketEventArgs winDivertPacket, ReadOnlySpan<byte> payload)
+        {
+            if (!_session!.SessionSuccess)
+            {
+                Debug.WriteLine($"[Session] Intentando sincronizar Handshake. Payload Len: {payload.Length}");
+                _session.InitSession(winDivertPacket, payload);
+                return false;
+            }
+            return true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void ProcessMaplePacket(WinDivertPacketEventArgs winDivertPacket, ReadOnlySpan<byte> payload, bool isIncoming)
+        {
+            var cryptoSession = isIncoming ? _session!.ServerRecv! : _session!.ClientRecv!;
+
+            var packet = PacketFactory.Parse(payload, cryptoSession.IV.Span, isIncoming);
+
+            _session.DecryptPacket(winDivertPacket, packet, isIncoming);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void EncryptAndSendPacketToServer(MapleSessionEventArgs args)
         {
             if (_session?.ClientSend is null) return;
@@ -216,6 +214,7 @@ namespace Caraota.NET.Interception
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void EncryptAndSendPacketToClient(MapleSessionEventArgs args)
         {
             if (_session!.ServerSend is null) return;
@@ -228,6 +227,7 @@ namespace Caraota.NET.Interception
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool TryEncryptPacket(ref DecodedPacket packet, bool isIncoming)
         {
             var crypto = isIncoming ? _session!.ServerSend : _session!.ClientSend;
