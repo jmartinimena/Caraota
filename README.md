@@ -6,34 +6,40 @@ Caraota.NET es un motor de interceptación de red diseñado para la investigaci�
 
 ---
 
-## 🚀 Logros Tecnológicos (Benchmarks)
+## 🚀 Benchmarks de Rendimiento
 
-Gracias a una reingeniería profunda del flujo de datos, he logrado reducir la latencia de procesamiento de **~1,000,000 ns** (1ms) a tan solo **~80,000 ns** (0.08ms).
+Hemos llevado el rendimiento al límite técnico de C# y .NET 8, reduciendo el tiempo de procesamiento por paquete de **1,000,000 ns** a solo **~80,000 ns**.
 
-* **Zero-Allocation Pipeline**: Eliminación total de instanciaciones innecesarias en el Heap durante el ciclo de vida del paquete.
-* **Nanosecond Precision**: Optimización de algoritmos criptográficos para ejecutarse en ciclos mínimos de CPU.
-* **Kernel-Level Capture**: Uso de WinDivert para interceptación directa en el stack de red de Windows.
+| Componente | Optimización | Impacto |
+| :--- | :--- | :--- |
+| **Criptografía** | Bitwise & Local Registers | ~2,500 ns |
+| **Gestión de Memoria** | Zero-Allocation (ArrayPool) | 0 B Garbage |
+| **Validación de IV** | Double-Buffer Logic | Estabilidad total |
+| **Pipeline Global** | **Ultra-Low Latency** | **~80,000 ns** |
 
 ---
 
-## 🛠️ Implementaciones Clave
+## 🛠️ Características Principales
 
-### 1. Criptografía Optimizada (Zero-GC)
-He rediseñado los algoritmos fundamentales de MapleStory para evitar el uso de memoria administrada:
-* **Custom Shanda Shuffle**: Implementación que utiliza registros locales y operaciones de bits (`Bitwise Rotation`) en lugar de aritmética decimal pesada.
-* **Fast Header Generation**: Generación de cabeceras de paquetes mediante `BinaryPrimitives` y máscaras de bits, eliminando divisiones y módulos costosos.
-* **AES Integration**: Cifrado simétrico integrado directamente en el flujo de bytes mediante `Span<T>`.
+### 1. Interceptación y MITM (Man-In-The-Middle)
+Caraota.NET utiliza **WinDivert** para operar a nivel de Kernel, permitiendo no solo observar, sino interceptar y modificar el tráfico en tiempo real.
+* **Packet Hijacking**: Modifica payloads (cambio de items, mensajes de chat, coordenadas) antes de que lleguen al destino.
+* **Drop & Inject**: Descarta paquetes legítimos e inyecta secuencias personalizadas sin desincronizar la sesión TCP.
+* **Auto-Checksum Correction**: Recalcula automáticamente los checksums de IP y TCP tras cualquier modificación del payload.
 
 
 
-### 2. Gestión de Memoria Inteligente
-* **Buffer Pooling**: Uso de `ArrayPool<byte>.Shared` para manejar el tráfico de red sin disparar el Garbage Collector.
-* **Stack Allocation**: Uso de `stackalloc` para datos temporales (como semillas de actualización de IV), manteniendo la memoria en la pila para una limpieza instantánea.
-* **Ref Structs & Spans**: Todo el procesamiento se realiza mediante `ReadOnlySpan<byte>`, evitando copias de arrays (`.ToArray()`).
+### 2. Ingeniería de "Zero-Allocation"
+El motor está diseñado para evitar el Garbage Collector (GC) en el "Hot Path":
+* **Uso de Spans & Memory**: Procesamiento de buffers mediante `ReadOnlySpan<byte>` para evitar copias costosas (`.ToArray()`).
+* **Stackalloc**: Las semillas de actualización de IV se gestionan en el Stack, eliminando la presión sobre el Heap.
+* **ArrayPool Integration**: Reutilización de buffers para el tráfico de red de alta intensidad.
 
-### 3. Sincronización de Sesión Avanzada
-* **Double IV Validation**: Sistema de validación de doble vía que permite reintentar el descifrado utilizando el `LastIV` en caso de pérdida de sincronía por micro-retrasos de red.
-* **Priority Scheduling**: Hilos de captura configurados con `ThreadPriority.Highest` y afinidad de núcleo para evitar interrupciones del Sistema Operativo.
+### 3. Criptografía Avanzada v62
+Implementación nativa y optimizada del protocolo de MapleStory:
+* **Custom Shanda**: Rediseñado con rotación de bits (`ROL`) y carga en registros locales para máxima velocidad.
+* **Fast Header Generation**: Generación de cabeceras mediante `BinaryPrimitives` y operaciones bitwise, eliminando divisiones y módulos lentos.
+* **Double IV Sync**: Sistema inteligente que utiliza `LastIV` para recuperar la sincronía en caso de ráfagas de paquetes o micro-retrasos.
 
 ---
 
