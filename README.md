@@ -77,4 +77,4 @@ Este software, **Caraota**, se proporciona exclusivamente con fines **educativos
 3. **Sin Garantías**: El software se distribuye "TAL CUAL" (AS IS), sin garantías de ningún tipo, expresas o implícitas, incluyendo, pero no limitado a, garantías de funcionamiento o idoneidad para un propósito específico.
 4. **Finalidad Ética**: Esta herramienta fue diseñada para ayudar a desarrolladores y entusiastas de la ciberseguridad a comprender mejor el protocolo de red de MapleStory v62 y la arquitectura de red de alto rendimiento en .NET. No está destinada a ser utilizada para el beneficio desleal, robo de datos o interrupción de servicios de terceros.
 
-**Si no está de acuerdo con estos términos, debe eliminar este software de su sistema de inmediato.**
+**Si no está de acuerdo con estos términos, no haga uso del software.**
