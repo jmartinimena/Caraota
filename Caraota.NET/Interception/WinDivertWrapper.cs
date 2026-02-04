@@ -54,7 +54,6 @@ namespace Caraota.NET.Interception
             _isRunning = true;
             _captureThread = new Thread(CaptureLoop)
             {
-                Name = "WinDivert-Capture",
                 IsBackground = true,
                 Priority = ThreadPriority.Highest
             };

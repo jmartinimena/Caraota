@@ -45,7 +45,7 @@ namespace Caraota.NET.Events
         public readonly int PayloadLen;
         public readonly int SIVLen;
         public readonly int RIVLen;
-        public readonly ReadOnlyMemory<byte> Payload => _fullBuffer.AsMemory();
+        public readonly ReadOnlyMemory<byte> Payload => _fullBuffer.AsMemory(0, PayloadLen);
         public readonly ReadOnlyMemory<byte> SIV => _fullBuffer.AsMemory(PayloadLen, SIVLen);
         public readonly ReadOnlyMemory<byte> RIV => _fullBuffer.AsMemory(PayloadLen + SIVLen, RIVLen);
         public readonly ushort Opcode => BinaryPrimitives.ReadUInt16LittleEndian(Payload.Span[..2]);
@@ -58,8 +58,8 @@ namespace Caraota.NET.Events
         public HandshakeEventArgs(HandshakePacketEventArgs args) 
         {
             PayloadLen = args.Packet.Length;
-            SIVLen = args.Packet.Length;
-            RIVLen = args.Packet.Length;
+            SIVLen = args.SIV.Length;
+            RIVLen = args.RIV.Length;
 
             int totalNeeded = PayloadLen + SIVLen + RIVLen;
 
