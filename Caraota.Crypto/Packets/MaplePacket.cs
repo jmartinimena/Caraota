@@ -1,25 +1,34 @@
 ﻿using System.Buffers;
 using System.Buffers.Binary;
+using System.Diagnostics;
+using System.Net.Sockets;
 
 namespace Caraota.Crypto.Packets
 {
     public class MaplePacket : IDisposable
     {
-        public bool IsIncoming { get; private set; }
+        private byte[]? _fullBuffer;
+
+        private readonly long _timestamp = Stopwatch.GetTimestamp();
+
         public int DataLen { get; private set; }
-        public byte[] Data { get; private set; }
         public int IvLen { get; private set; }
-        public byte[] IV { get; private set; }
         public int HeaderLen { get; private set; }
-        public byte[] Header { get; private set; }
         public int PayloadLen { get; private set; }
-        public byte[] Payload { get; private set; }
+
+        public Memory<byte> Data => _fullBuffer.AsMemory(0, DataLen);
+        public Memory<byte> IV => _fullBuffer.AsMemory(DataLen, IvLen);
+        public Memory<byte> Header => _fullBuffer.AsMemory(DataLen + IvLen, HeaderLen);
+        public Memory<byte> Payload => _fullBuffer.AsMemory(DataLen + IvLen + HeaderLen, PayloadLen);
+
         public ushort Opcode { get; private set; }
-        public readonly DateTimeOffset Timestamp = DateTimeOffset.UtcNow;
-        public string IVStr => Convert.ToHexString(IV, 0, IvLen);
-        public string HeaderStr => Convert.ToHexString(Header, 0, HeaderLen);
-        public string PayloadStr => Convert.ToHexString(Payload, 0, PayloadLen);
-        public string ToHexString() => Convert.ToHexString(Data, 0, DataLen);
+        public bool IsIncoming { get; private set; }
+
+        public string IVStr => Convert.ToHexString(IV.Span);
+        public string HeaderStr => Convert.ToHexString(Header.Span);
+        public string PayloadStr => Convert.ToHexString(Payload.Span);
+        public string ToHexString() => Convert.ToHexString(Data.Span);
+        public string FormattedTime => GetRealTime(_timestamp).ToString("HH:mm:ss.fff");
         public MaplePacket(DecodedPacket maplePacket)
         {
             DataLen = maplePacket.Data.Length;
@@ -27,38 +36,40 @@ namespace Caraota.Crypto.Packets
             HeaderLen = maplePacket.Header.Length;
             PayloadLen = maplePacket.Payload.Length;
 
-            Data = ArrayPool<byte>.Shared.Rent(maplePacket.Data.Length);
-            maplePacket.Data.CopyTo(Data);
+            int totalNeeded = DataLen + IvLen + HeaderLen + PayloadLen;
 
-            IV = ArrayPool<byte>.Shared.Rent(maplePacket.IV.Length);
-            maplePacket.IV.CopyTo(IV);
+            _fullBuffer = ArrayPool<byte>.Shared.Rent(totalNeeded);
 
-            Header = ArrayPool<byte>.Shared.Rent(maplePacket.Header.Length);
-            maplePacket.Header.CopyTo(Header);
+            maplePacket.Data.CopyTo(_fullBuffer.AsSpan(0, DataLen));
+            maplePacket.IV.CopyTo(_fullBuffer.AsSpan(DataLen, IvLen));
+            maplePacket.Header.CopyTo(_fullBuffer.AsSpan(DataLen + IvLen, HeaderLen));
+            maplePacket.Payload.CopyTo(_fullBuffer.AsSpan(DataLen + IvLen + HeaderLen, PayloadLen));
 
-            Payload = ArrayPool<byte>.Shared.Rent(maplePacket.Payload.Length);
-            maplePacket.Payload.CopyTo(Payload);
-
-            Opcode = BinaryPrimitives.ReadUInt16LittleEndian(Payload.AsSpan(0, 2));
+            Opcode = BinaryPrimitives.ReadUInt16LittleEndian(_fullBuffer.AsSpan(DataLen + IvLen + HeaderLen, 2));
 
             IsIncoming = maplePacket.IsIncoming;
+            _timestamp = Stopwatch.GetTimestamp();
         }
 
-        public string Predict() => PacketUtils.Predict(Payload.AsMemory(0, PayloadLen));
+        public string Predict() => PacketUtils.Predict(Payload);
 
         public void Dispose()
         {
-            if (Data != null) ArrayPool<byte>.Shared.Return(Data);
-            if (IV != null) ArrayPool<byte>.Shared.Return(IV);
-            if (Header != null) ArrayPool<byte>.Shared.Return(Header);
-            if (Payload != null) ArrayPool<byte>.Shared.Return(Payload);
-
-            Data = null!;
-            IV = null!;
-            Header = null!;
-            Payload = null!;
-
+            if (_fullBuffer != null)
+            {
+                ArrayPool<byte>.Shared.Return(_fullBuffer);
+                _fullBuffer = null;
+            }
             GC.SuppressFinalize(this);
+        }
+
+        private static readonly DateTime _startTimeActual = DateTime.Now;
+        private static readonly long _startTimeTimestamp = Stopwatch.GetTimestamp();
+
+        public static DateTime GetRealTime(long packetTimestamp)
+        {
+            TimeSpan elapsedSinceStart = Stopwatch.GetElapsedTime(_startTimeTimestamp, packetTimestamp);
+            return _startTimeActual + elapsedSinceStart;
         }
     }
 }

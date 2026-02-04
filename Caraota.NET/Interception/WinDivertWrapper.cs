@@ -1,9 +1,11 @@
 ﻿using Caraota.NET.Events;
+using Caraota.NET.Utils;
 using System.Buffers.Binary;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using WinDivertSharp;
@@ -46,6 +48,8 @@ namespace Caraota.NET.Interception
 
         public void Start()
         {
+            Interop.SetThreadAffinity(2);
+
             if (_isRunning) return;
 
             _isRunning = true;

@@ -32,8 +32,8 @@ namespace Caraota.Crypto.Processing
             if (packet.DataLen < 4) return default!;
 
             return new DecodedPacket(
-                packet.Data.AsSpan(0, packet.DataLen), 
-                packet.IV.AsSpan(0, packet.IvLen), 
+                packet.Data.Span, 
+                packet.IV.Span, 
                 packet.IsIncoming);
         }
     }

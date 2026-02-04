@@ -1,4 +1,5 @@
-﻿using Caraota.NET.Events;
+﻿using System.Threading.Channels;
+using Caraota.NET.Events;
 
 namespace Caraota.NET.Interception
 {
@@ -6,39 +7,40 @@ namespace Caraota.NET.Interception
     {
         public event MaplePacketEventDelegate? OnOutgoing;
         public event MaplePacketEventDelegate? OnIncoming;
-        public delegate void MaplePacketEventDelegate(MaplePacketEventArgs packet);
+        public delegate Task MaplePacketEventDelegate(MaplePacketEventArgs packet);
 
-        private readonly Queue<MaplePacketEventArgs> _packetsQueue = new();
+        private readonly Channel<MaplePacketEventArgs> _channel = Channel.CreateBounded<MaplePacketEventArgs>(new BoundedChannelOptions(10000)
+        {
+            FullMode = BoundedChannelFullMode.DropOldest,
+            SingleReader = true,
+            SingleWriter = false
+        });
 
         public PacketDispatcher()
         {
-            var loggerThread = new Thread(ProcessLogQueue)
-            {
-                IsBackground = true,
-                Priority = ThreadPriority.Lowest
-            };
-            loggerThread.Start();
+            Task.Run(ProcessLogQueueAsync);
         }
 
-        public void Enqueue(MaplePacketEventArgs packet) => _packetsQueue.Enqueue(packet);
-
-        private void ProcessLogQueue()
+        public void Enqueue(MaplePacketEventArgs packet)
         {
-            while (true)
+            _channel.Writer.TryWrite(packet);
+        }
+
+        private async Task ProcessLogQueueAsync()
+        {
+            await foreach (var args in _channel.Reader.ReadAllAsync())
             {
-                while (_packetsQueue.TryDequeue(out var args))
+                try
                 {
                     if (args.Packet.IsIncoming)
-                    {
-                        OnIncoming?.Invoke(args);
-                    }
+                        _ = OnIncoming?.Invoke(args);
                     else
-                    {
-                        OnOutgoing?.Invoke(args);
-                    }
+                        _ = OnOutgoing?.Invoke(args);
                 }
-
-                Thread.Sleep(100);
+                finally
+                {
+                    args.Packet.Dispose();
+                }
             }
         }
     }

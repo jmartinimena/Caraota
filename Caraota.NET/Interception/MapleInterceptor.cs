@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.Runtime;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 using Caraota.NET.TCP;
@@ -29,6 +30,7 @@ namespace Caraota.NET.Interception
         public void StartListening(int port)
         {
             Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.High;
+            GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
 
             _session = new();
             _session.OnHandshake += OnHandshakeMITM;
