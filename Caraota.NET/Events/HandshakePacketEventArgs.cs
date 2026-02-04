@@ -39,21 +39,21 @@ namespace Caraota.NET.Events
         }
     }
 
-    public class HandshakeEventArgs
+    public readonly struct HandshakeEventArgs
     {
-        private byte[]? _fullBuffer;
-        public int PayloadLen { get; private set; }
-        public int SIVLen { get; private set; }
-        public int RIVLen { get; private set; }
-        public ReadOnlyMemory<byte> Payload => _fullBuffer.AsMemory();
-        public ReadOnlyMemory<byte> SIV => _fullBuffer.AsMemory(PayloadLen, SIVLen);
-        public ReadOnlyMemory<byte> RIV => _fullBuffer.AsMemory(PayloadLen + SIVLen, RIVLen);
-        public ushort Opcode => BinaryPrimitives.ReadUInt16LittleEndian(Payload.Span[..2]);
-        public ushort Version => BinaryPrimitives.ReadUInt16LittleEndian(Payload.Span.Slice(2, 2));
-        public byte Locale => Payload.Span[14];
+        private readonly byte[]? _fullBuffer;
+        public readonly int PayloadLen;
+        public readonly int SIVLen;
+        public readonly int RIVLen;
+        public readonly ReadOnlyMemory<byte> Payload => _fullBuffer.AsMemory();
+        public readonly ReadOnlyMemory<byte> SIV => _fullBuffer.AsMemory(PayloadLen, SIVLen);
+        public readonly ReadOnlyMemory<byte> RIV => _fullBuffer.AsMemory(PayloadLen + SIVLen, RIVLen);
+        public readonly ushort Opcode => BinaryPrimitives.ReadUInt16LittleEndian(Payload.Span[..2]);
+        public readonly ushort Version => BinaryPrimitives.ReadUInt16LittleEndian(Payload.Span.Slice(2, 2));
+        public readonly byte Locale => Payload.Span[14];
 
         private readonly long _timestamp = Stopwatch.GetTimestamp();
-        public string FormattedTime => PacketUtils.GetRealTime(_timestamp).ToString("HH:mm:ss:fff");
+        public readonly string FormattedTime => PacketUtils.GetRealTime(_timestamp).ToString("HH:mm:ss:fff");
 
         public HandshakeEventArgs(HandshakePacketEventArgs args) 
         {

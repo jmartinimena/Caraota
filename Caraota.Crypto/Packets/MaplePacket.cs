@@ -32,6 +32,8 @@ namespace Caraota.Crypto.Packets
         // Constructor sin parametros para el ObjectPool
         public MaplePacket() { }
 
+        public MaplePacket(DecodedPacket maplePacket) => Initialize(maplePacket);
+
         public void Initialize(DecodedPacket maplePacket)
         {
             DataLen = maplePacket.Data.Length;

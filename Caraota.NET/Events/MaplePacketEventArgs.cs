@@ -2,9 +2,9 @@
 
 namespace Caraota.NET.Events
 {
-    public class MaplePacketEventArgs(MaplePacket packet, bool hijacked)
+    public readonly struct MaplePacketEventArgs(MaplePacket packet, bool hijacked)
     {
-        public bool Hijacked { get; private set; } = hijacked;
-        public MaplePacket Packet { get; set; } = packet;
+        public readonly bool Hijacked  = hijacked;
+        public readonly MaplePacket Packet = packet;
     }
 }
