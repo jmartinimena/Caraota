@@ -1,7 +1,6 @@
 ﻿using System.Buffers;
-using System.Buffers.Binary;
 using System.Diagnostics;
-using System.Net.Sockets;
+using System.Buffers.Binary;
 
 namespace Caraota.Crypto.Packets
 {
@@ -16,10 +15,10 @@ namespace Caraota.Crypto.Packets
         public int HeaderLen { get; private set; }
         public int PayloadLen { get; private set; }
 
-        public Memory<byte> Data => _fullBuffer.AsMemory(0, DataLen);
-        public Memory<byte> IV => _fullBuffer.AsMemory(DataLen, IvLen);
-        public Memory<byte> Header => _fullBuffer.AsMemory(DataLen + IvLen, HeaderLen);
-        public Memory<byte> Payload => _fullBuffer.AsMemory(DataLen + IvLen + HeaderLen, PayloadLen);
+        public ReadOnlyMemory<byte> Data => _fullBuffer.AsMemory(0, DataLen);
+        public ReadOnlyMemory<byte> IV => _fullBuffer.AsMemory(DataLen, IvLen);
+        public ReadOnlyMemory<byte> Header => _fullBuffer.AsMemory(DataLen + IvLen, HeaderLen);
+        public ReadOnlyMemory<byte> Payload => _fullBuffer.AsMemory(DataLen + IvLen + HeaderLen, PayloadLen);
 
         public ushort Opcode { get; private set; }
         public bool IsIncoming { get; private set; }
@@ -28,7 +27,7 @@ namespace Caraota.Crypto.Packets
         public string HeaderStr => Convert.ToHexString(Header.Span);
         public string PayloadStr => Convert.ToHexString(Payload.Span);
         public string ToHexString() => Convert.ToHexString(Data.Span);
-        public string FormattedTime => GetRealTime(_timestamp).ToString("HH:mm:ss.fff");
+        public string FormattedTime => PacketUtils.GetRealTime(_timestamp).ToString("HH:mm:ss:fff");
         public MaplePacket(DecodedPacket maplePacket)
         {
             DataLen = maplePacket.Data.Length;
@@ -61,15 +60,6 @@ namespace Caraota.Crypto.Packets
                 _fullBuffer = null;
             }
             GC.SuppressFinalize(this);
-        }
-
-        private static readonly DateTime _startTimeActual = DateTime.Now;
-        private static readonly long _startTimeTimestamp = Stopwatch.GetTimestamp();
-
-        public static DateTime GetRealTime(long packetTimestamp)
-        {
-            TimeSpan elapsedSinceStart = Stopwatch.GetElapsedTime(_startTimeTimestamp, packetTimestamp);
-            return _startTimeActual + elapsedSinceStart;
         }
     }
 }

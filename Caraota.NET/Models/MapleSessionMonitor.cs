@@ -1,8 +1,12 @@
-﻿namespace Caraota.NET.Models
+﻿using Caraota.NET.Events;
+
+namespace Caraota.NET.Models
 {
     public class MapleSessionMonitor
     {
-        public event EventHandler? OnDisconnected;
+        public event DisconnectedEventDelegate? OnDisconnected;
+
+        public delegate Task DisconnectedEventDelegate();
 
         public long LastPacketInterceptedTime;
 
@@ -31,7 +35,7 @@
 
                 if ((Environment.TickCount64 - LastPacketInterceptedTime) >= 8000)
                 {
-                    OnDisconnected?.Invoke(this, new());
+                    OnDisconnected?.Invoke();
 
                     _session.SessionSuccess = false;
 

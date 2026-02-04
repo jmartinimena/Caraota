@@ -13,8 +13,9 @@ namespace Caraota.NET.Interception
 {
     public class MapleInterceptor : IDisposable
     {
-        public event EventHandler<Exception>? OnException;
-        public event EventHandler<HandshakePacketEventArgs>? OnHandshake;
+        public event MapleInterceptorAsyncEventDelegate<Exception>? OnException;
+        public event MapleInterceptorAsyncEventDelegate<HandshakeEventArgs>? OnHandshake;
+        public delegate Task MapleInterceptorAsyncEventDelegate<T>(T packet);
 
         public readonly HijackManager HijackManager = new();
         public readonly PacketDispatcher PacketDispatcher = new();
@@ -60,7 +61,7 @@ namespace Caraota.NET.Interception
 
         private void Wrapper_OnError(Exception e)
         {
-            OnException?.Invoke(this, e);
+            _ = OnException?.Invoke(e);
         }
 
         private void ProcessRawPacket(WinDivertPacketEventArgs winDivertPacket, bool isIncoming)
@@ -155,11 +156,12 @@ namespace Caraota.NET.Interception
             }
         }
 
-        private void OnHandshakeMITM(object? sender, HandshakePacketEventArgs e)
+        private void OnHandshakeMITM(object? sender, HandshakePacketEventArgs args)
         {
-            OnHandshake?.Invoke(sender, e);
 
-            _tcpStack!.ModifyAndSend(e.MapleSessionEventArgs, e.Packet, isIncoming: true);
+            _ = OnHandshake?.Invoke(new HandshakeEventArgs(args));
+
+            _tcpStack!.ModifyAndSend(args.MapleSessionEventArgs, args.Packet, isIncoming: true);
         }
 
         private bool ProcessLeftovers(MapleSessionEventArgs args, bool isIncoming)

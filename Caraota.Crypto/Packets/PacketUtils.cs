@@ -1,7 +1,7 @@
-﻿using System.Buffers.Binary;
+﻿using Caraota.Crypto.Processing;
+using System.Buffers.Binary;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
-
-using Caraota.Crypto.Processing;
 
 namespace Caraota.Crypto.Packets
 {
@@ -72,6 +72,15 @@ namespace Caraota.Crypto.Packets
 
             var structurePredictor = new StructurePredictor(packet);
             return structurePredictor.GetStructure();
+        }
+
+        private static readonly DateTime _startTimeActual = DateTime.Now;
+        private static readonly long _startTimeTimestamp = Stopwatch.GetTimestamp();
+
+        public static DateTime GetRealTime(long packetTimestamp)
+        {
+            TimeSpan elapsedSinceStart = Stopwatch.GetElapsedTime(_startTimeTimestamp, packetTimestamp);
+            return _startTimeActual + elapsedSinceStart;
         }
     }
 }

@@ -1,4 +1,7 @@
-﻿using System.Buffers.Binary;
+﻿using Caraota.Crypto.Packets;
+using System.Buffers;
+using System.Buffers.Binary;
+using System.Diagnostics;
 
 namespace Caraota.NET.Events
 {
@@ -12,7 +15,6 @@ namespace Caraota.NET.Events
         public ReadOnlySpan<byte> SIV { get; }
         public ReadOnlySpan<byte> RIV { get; }
         public readonly byte Locale { get; }
-        public readonly DateTimeOffset Timestamp { get; } = DateTimeOffset.UtcNow;
 
         public HandshakePacketEventArgs(MapleSessionEventArgs mapleSessionEventArgs, ReadOnlySpan<byte> packet)
         {
@@ -34,6 +36,38 @@ namespace Caraota.NET.Events
                 RIV = Packet.Slice(11, 4);
                 Locale = Packet[15];
             }
+        }
+    }
+
+    public class HandshakeEventArgs
+    {
+        private byte[]? _fullBuffer;
+        public int PayloadLen { get; private set; }
+        public int SIVLen { get; private set; }
+        public int RIVLen { get; private set; }
+        public ReadOnlyMemory<byte> Payload => _fullBuffer.AsMemory();
+        public ReadOnlyMemory<byte> SIV => _fullBuffer.AsMemory(PayloadLen, SIVLen);
+        public ReadOnlyMemory<byte> RIV => _fullBuffer.AsMemory(PayloadLen + SIVLen, RIVLen);
+        public ushort Opcode => BinaryPrimitives.ReadUInt16LittleEndian(Payload.Span[..2]);
+        public ushort Version => BinaryPrimitives.ReadUInt16LittleEndian(Payload.Span.Slice(2, 2));
+        public byte Locale => Payload.Span[14];
+
+        private readonly long _timestamp = Stopwatch.GetTimestamp();
+        public string FormattedTime => PacketUtils.GetRealTime(_timestamp).ToString("HH:mm:ss:fff");
+
+        public HandshakeEventArgs(HandshakePacketEventArgs args) 
+        {
+            PayloadLen = args.Packet.Length;
+            SIVLen = args.Packet.Length;
+            RIVLen = args.Packet.Length;
+
+            int totalNeeded = PayloadLen + SIVLen + RIVLen;
+
+            _fullBuffer = ArrayPool<byte>.Shared.Rent(totalNeeded);
+
+            args.Packet.CopyTo(_fullBuffer.AsSpan(0, PayloadLen));
+            args.SIV.CopyTo(_fullBuffer.AsSpan(PayloadLen, SIVLen));
+            args.RIV.CopyTo(_fullBuffer.AsSpan(PayloadLen + SIVLen, RIVLen));
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System.Threading.Channels;
+
 using Caraota.NET.Events;
 
 namespace Caraota.NET.Interception
@@ -33,9 +34,9 @@ namespace Caraota.NET.Interception
                 try
                 {
                     if (args.Packet.IsIncoming)
-                        _ = OnIncoming?.Invoke(args);
+                        await OnIncoming?.Invoke(args)!;
                     else
-                        _ = OnOutgoing?.Invoke(args);
+                        await OnOutgoing?.Invoke(args)!;
                 }
                 finally
                 {
