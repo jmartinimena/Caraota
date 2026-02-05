@@ -1,17 +1,16 @@
-﻿using System.Buffers.Binary;
+﻿using Caraota.Crypto;
+using Caraota.Crypto.Packets;
+using Caraota.Crypto.Processing;
+using Caraota.NET.Events;
+using Caraota.NET.Exceptions;
+using Caraota.NET.TCP;
+using System.Buffers.Binary;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
-using Caraota.Crypto;
-using Caraota.Crypto.Packets;
-using Caraota.Crypto.Processing;
-
-using Caraota.NET.Events;
-using Caraota.NET.Exceptions;
-
 namespace Caraota.NET.Models;
 
-public sealed class MapleSession
+public sealed class MapleSession(TcpStackArchitect tcpStack)
 {
     private const int MAX_VERSION = 256;
     private const int HANDSHAKE_V82_LENGTH = 16;
@@ -23,6 +22,9 @@ public sealed class MapleSession
     private MapleCrypto? _serverSend;
     private MapleCrypto? _clientRecv;
     private MapleCrypto? _clientSend;
+
+    private readonly PacketReassembler _reassembler = new();
+    private readonly TcpStackArchitect? _tcpStack = tcpStack;
 
     public bool SessionSuccess { get; set; }
 
@@ -68,7 +70,8 @@ public sealed class MapleSession
 
     private void CreateCryptoInstances(WinDivertPacketEventArgs winDivertPacket, ReadOnlySpan<byte> payload, ushort version)
     {
-        var handshakePacket = new HandshakePacketEventArgs(new MapleSessionEventArgs(winDivertPacket, default), payload);
+        var mapleSession = new MapleSessionEventArgs(winDivertPacket, default);
+        var handshakePacket = new HandshakePacketEventArgs(mapleSession, payload);
 
         if (SessionSuccess) return;
 
@@ -79,7 +82,42 @@ public sealed class MapleSession
 
         SessionSuccess = true;
 
+        _tcpStack!.ModifyAndSend(mapleSession, payload, isIncoming: true);
+
         OnHandshake?.Invoke(this, handshakePacket);
+    }
+
+    public bool ProcessLeftovers(MapleSessionEventArgs args, bool isIncoming)
+    {
+        var packet = args.DecodedPacket;
+
+        if (!_reassembler.IsFragment(packet.Id, packet.Leftovers.Length, isIncoming))
+        {
+            return false;
+        }
+
+        byte[] outBuffer = _reassembler.GetOrCreateBuffer(packet.Id, packet.TotalLength, isIncoming);
+
+        if (TryEncryptPacket(ref packet, isIncoming))
+        {
+            packet.Data.CopyTo(outBuffer.AsSpan().Slice(packet.ParentReaded, packet.Data.Length));
+        }
+        else
+        {
+            packet.Header.CopyTo(outBuffer.AsSpan().Slice(packet.ParentReaded, 4));
+            packet.Payload.CopyTo(outBuffer.AsSpan().Slice(packet.ParentReaded + 4, packet.Payload.Length));
+        }
+
+        if (packet.Leftovers.Length == 0)
+        {
+            byte[]? finalData = _reassembler.Finalize(packet.Id, isIncoming);
+            if (finalData != null)
+            {
+                _tcpStack!.ModifyAndSend(args, finalData.AsSpan(), isIncoming);
+            }
+        }
+
+        return true;
     }
 
     public void DecryptPacket(WinDivertPacketEventArgs args, DecodedPacket packet, bool isIncoming)
@@ -99,6 +137,19 @@ public sealed class MapleSession
     private MapleCrypto? GetSessionForDirection(bool isIncoming) =>
         isIncoming ? _serverRecv : _clientRecv;
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void RaisePacketEvent(bool isIncoming, MapleSessionEventArgs args)
+    {
+        if (isIncoming)
+        {
+            OnIncomingPacket?.Invoke(args);
+        }
+        else
+        {
+            OnOutgoingPacket?.Invoke(args);
+        }
+    }
+
     private void DecryptPacketRecursive(WinDivertPacketEventArgs args, DecodedPacket packet, bool isIncoming, MapleCrypto session)
     {
         if (session.Validate(packet, isIncoming))
@@ -113,19 +164,6 @@ public sealed class MapleSession
         if (!leftovers.IsEmpty)
         {
             DecryptPacketLeftovers(args, packet, leftovers, isIncoming, session);
-        }
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void RaisePacketEvent(bool isIncoming, MapleSessionEventArgs args)
-    {
-        if (isIncoming)
-        {
-            OnIncomingPacket?.Invoke(args);
-        }
-        else
-        {
-            OnOutgoingPacket?.Invoke(args);
         }
     }
 
@@ -144,6 +182,46 @@ public sealed class MapleSession
         );
 
         DecryptPacketRecursive(args, childPacket, isIncoming, session);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void EncryptAndSendPacketToServer(MapleSessionEventArgs args)
+    {
+        if (ClientSend is null) return;
+
+        var packet = args.DecodedPacket;
+
+        if (TryEncryptPacket(ref packet, isIncoming: false))
+        {
+            _tcpStack!.ModifyAndSend(args, packet.Data, false);
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void EncryptAndSendPacketToClient(MapleSessionEventArgs args)
+    {
+        if (ServerSend is null) return;
+
+        var packet = args.DecodedPacket;
+
+        if (TryEncryptPacket(ref packet, isIncoming: true))
+        {
+            _tcpStack!.ModifyAndSend(args, packet.Data, true);
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool TryEncryptPacket(ref DecodedPacket packet, bool isIncoming)
+    {
+        var crypto = isIncoming ? ServerSend : ClientSend;
+
+        if (crypto is null) return false;
+
+        bool success;
+        if (success = crypto.Validate(packet, isIncoming))
+            crypto.Encrypt(ref packet);
+
+        return success;
     }
 
     [MemberNotNull(nameof(_serverRecv), nameof(_serverSend), nameof(_clientRecv), nameof(_clientSend))]

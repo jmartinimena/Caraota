@@ -7,7 +7,6 @@ using Caraota.NET.Events;
 using Caraota.NET.Models;
 using Caraota.NET.Performance;
 
-using Caraota.Crypto.Packets;
 using Caraota.Crypto.Processing;
 
 namespace Caraota.NET.Interception
@@ -24,20 +23,13 @@ namespace Caraota.NET.Interception
 
         private MapleSession? _session;
         private WinDivertWrapper? _wrapper;
-        private TcpStackArchitect? _tcpStack;
-
+        
         private readonly Stopwatch _sw = new();
-        private readonly PacketReassembler _reassembler = new();
 
         public void StartListening(int port)
         {
             Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.High;
             GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
-
-            _session = new();
-            _session.OnHandshake += OnHandshakeMITM;
-            _session.OnOutgoingPacket += OnOutgoingMITM;
-            _session.OnIncomingPacket += OnIncomingMITM;
 
             _wrapper = WinDivertFactory.CreateForTcpPort(port);
             _wrapper.OnError += Wrapper_OnError;
@@ -45,7 +37,11 @@ namespace Caraota.NET.Interception
             _wrapper.OnOutboundPacket += Wrapper_OnOutboundPacket;
             _wrapper.Start();
 
-            _tcpStack = new(_wrapper);
+            var tcpStack = new TcpStackArchitect(_wrapper);
+            _session = new MapleSession(tcpStack);
+            _session.OnHandshake += OnHandshakeMITM;
+            _session.OnOutgoingPacket += OnOutgoingMITM;
+            _session.OnIncomingPacket += OnIncomingMITM;
 
             SessionMonitor.Start(_session);
         }
@@ -102,9 +98,10 @@ namespace Caraota.NET.Interception
 
             PacketDispatcher.Enqueue(new MaplePacketEventArgs(maplePacket, args.Hijacked));
 
-            if (!ProcessLeftovers(args, isIncoming: false))
+            // Simplificar y cargar a MapleSession de esta responsabilidad
+            if (!_session!.ProcessLeftovers(args, isIncoming: false))
             {
-                EncryptAndSendPacketToServer(args);
+                _session!.EncryptAndSendPacketToServer(args);
             }
         }
 
@@ -117,50 +114,16 @@ namespace Caraota.NET.Interception
 
             PacketDispatcher.Enqueue(new MaplePacketEventArgs(maplePacket, args.Hijacked));
 
-            if (!ProcessLeftovers(args, isIncoming: true))
+            // Simplificar y cargar a MapleSession de esta responsabilidad
+            if (!_session!.ProcessLeftovers(args, isIncoming: true))
             {
-                EncryptAndSendPacketToClient(args);
+                _session!.EncryptAndSendPacketToClient(args);
             }
         }
 
         private void OnHandshakeMITM(object? sender, HandshakePacketEventArgs args)
         {
             _ = OnHandshake?.Invoke(new HandshakeEventArgs(args));
-
-            _tcpStack!.ModifyAndSend(args.MapleSessionEventArgs, args.Packet, isIncoming: true);
-        }
-
-        private bool ProcessLeftovers(MapleSessionEventArgs args, bool isIncoming)
-        {
-            var packet = args.DecodedPacket;
-
-            if (!_reassembler.IsFragment(packet.Id, packet.Leftovers.Length, isIncoming))
-            {
-                return false;
-            }
-
-            byte[] outBuffer = _reassembler.GetOrCreateBuffer(packet.Id, packet.TotalLength, isIncoming);
-
-            if (TryEncryptPacket(ref packet, isIncoming))
-            {
-                packet.Data.CopyTo(outBuffer.AsSpan().Slice(packet.ParentReaded, packet.Data.Length));
-            }
-            else
-            {
-                packet.Header.CopyTo(outBuffer.AsSpan().Slice(packet.ParentReaded, 4));
-                packet.Payload.CopyTo(outBuffer.AsSpan().Slice(packet.ParentReaded + 4, packet.Payload.Length));
-            }
-
-            if (packet.Leftovers.Length == 0)
-            {
-                byte[]? finalData = _reassembler.Finalize(packet.Id, isIncoming);
-                if (finalData != null)
-                {
-                    _tcpStack!.ModifyAndSend(args, finalData.AsSpan(), isIncoming);
-                }
-            }
-
-            return true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -198,46 +161,6 @@ namespace Caraota.NET.Interception
             var packet = PacketFactory.Parse(payload, cryptoSession.IV.Span, isIncoming);
 
             _session.DecryptPacket(winDivertPacket, packet, isIncoming);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void EncryptAndSendPacketToServer(MapleSessionEventArgs args)
-        {
-            if (_session?.ClientSend is null) return;
-
-            var packet = args.DecodedPacket;
-
-            if (TryEncryptPacket(ref packet, isIncoming: false))
-            {
-                _tcpStack!.ModifyAndSend(args, packet.Data, false);
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void EncryptAndSendPacketToClient(MapleSessionEventArgs args)
-        {
-            if (_session!.ServerSend is null) return;
-
-            var packet = args.DecodedPacket;
-
-            if (TryEncryptPacket(ref packet, isIncoming: true))
-            {
-                _tcpStack!.ModifyAndSend(args, packet.Data, true);
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private bool TryEncryptPacket(ref DecodedPacket packet, bool isIncoming)
-        {
-            var crypto = isIncoming ? _session!.ServerSend : _session!.ClientSend;
-
-            if (crypto is null) return false;
-
-            bool success;
-            if (success = crypto.Validate(packet, isIncoming))
-                crypto.Encrypt(ref packet);
-
-            return success;
         }
 
         public void Dispose() => _wrapper?.Dispose();
