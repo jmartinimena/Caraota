@@ -1,4 +1,5 @@
-﻿using System.Buffers.Binary;
+﻿using System.Diagnostics;
+using System.Buffers.Binary;
 
 namespace Caraota.Crypto.Packets
 {
@@ -18,7 +19,7 @@ namespace Caraota.Crypto.Packets
 
         public DecodedPacket(ReadOnlySpan<byte> data, ReadOnlySpan<byte> iv, bool isIncoming, long? parentId = null, int? parentReaded = null)
         {
-            Id = parentId ?? DateTime.UtcNow.Ticks;
+            Id = parentId ?? Stopwatch.GetTimestamp();
             ParentReaded = parentReaded ?? 0;
 
             ReadOnlySpan<byte> headerSpan = data[..4];

@@ -63,9 +63,6 @@ namespace Caraota.NET.Interception
 
         private void CaptureLoop()
         {
-            // Saltamos los nucleos 0 y 1 porque es donde Windows suele meter toda la carga del sistema
-            Interop.SetThreadAffinity(4);
-
             WinDivertAddress address = default;
             WinDivertBuffer buffer = new();
 

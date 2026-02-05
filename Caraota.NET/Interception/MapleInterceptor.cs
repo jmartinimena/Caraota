@@ -133,32 +133,31 @@ namespace Caraota.NET.Interception
         private bool ProcessLeftovers(MapleSessionEventArgs args, bool isIncoming)
         {
             var packet = args.DecodedPacket;
-            long id = packet.Id;
 
-            bool hasBuffer = _reassembler.Exists(id);
-            if (packet.Leftovers.Length == 0 && !hasBuffer) return false;
-
-            if (!_reassembler.TryGetBuffer(id, packet.TotalLength, out Span<byte> outBuffer, out int offset))
-                return false;
-
-            var currentFragment = packet;
-
-            if (TryEncryptPacket(ref currentFragment, isIncoming))
+            if (!_reassembler.IsFragment(packet.Id, packet.Leftovers.Length, isIncoming))
             {
-                currentFragment.Data.CopyTo(outBuffer.Slice(packet.ParentReaded, currentFragment.Data.Length));
+                return false;
+            }
+
+            byte[] outBuffer = _reassembler.GetOrCreateBuffer(packet.Id, packet.TotalLength, isIncoming);
+
+            if (TryEncryptPacket(ref packet, isIncoming))
+            {
+                packet.Data.CopyTo(outBuffer.AsSpan().Slice(packet.ParentReaded, packet.Data.Length));
             }
             else
             {
-                packet.Header.CopyTo(outBuffer.Slice(packet.ParentReaded, 4));
-                packet.Payload.CopyTo(outBuffer.Slice(packet.ParentReaded + 4, packet.Payload.Length));
+                packet.Header.CopyTo(outBuffer.AsSpan().Slice(packet.ParentReaded, 4));
+                packet.Payload.CopyTo(outBuffer.AsSpan().Slice(packet.ParentReaded + 4, packet.Payload.Length));
             }
-
-            _reassembler.UpdateProgress(id, packet.Data.Length);
 
             if (packet.Leftovers.Length == 0)
             {
-                _tcpStack!.ModifyAndSend(args, outBuffer, isIncoming);
-                _reassembler.Release(id);
+                byte[]? finalData = _reassembler.Finalize(packet.Id, isIncoming);
+                if (finalData != null)
+                {
+                    _tcpStack!.ModifyAndSend(args, finalData.AsSpan(), isIncoming);
+                }
             }
 
             return true;

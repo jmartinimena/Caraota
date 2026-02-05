@@ -1,59 +1,36 @@
-﻿using System.Buffers;
-
-namespace Caraota.NET.TCP
+﻿namespace Caraota.NET.TCP
 {
     public class PacketReassembler
     {
-        private static readonly ArrayPool<byte> _pool = ArrayPool<byte>.Shared;
+        private readonly Dictionary<long, byte[]> _incomingBuffer = new();
+        private readonly Dictionary<long, byte[]> _outgoingBuffer = new();
 
-        private struct ReassemblyState
+        public bool IsFragment(long id, int leftoversLength, bool isIncoming)
         {
-            public byte[] Buffer;
-            public int BytesWritten;
-            public int TotalExpected;
+            var bufferMap = isIncoming ? _incomingBuffer : _outgoingBuffer;
+            return leftoversLength > 0 || bufferMap.ContainsKey(id);
         }
 
-        private readonly Dictionary<long, ReassemblyState> _states = new(16);
-
-        public bool Exists(long packetId) => _states.ContainsKey(packetId);
-        public bool TryGetBuffer(long packetId, int totalLength, out Span<byte> buffer, out int currentOffset)
+        public byte[] GetOrCreateBuffer(long id, int totalLength, bool isIncoming)
         {
-            if (!_states.TryGetValue(packetId, out var state))
+            var bufferMap = isIncoming ? _incomingBuffer : _outgoingBuffer;
+
+            if (!bufferMap.TryGetValue(id, out var outBuffer))
             {
-                state = new ReassemblyState
-                {
-                    Buffer = _pool.Rent(totalLength),
-                    BytesWritten = 0,
-                    TotalExpected = totalLength
-                };
-                _states[packetId] = state;
+                outBuffer = new byte[totalLength];
+                bufferMap.Add(id, outBuffer);
             }
-
-            buffer = state.Buffer.AsSpan(0, state.TotalExpected);
-            currentOffset = state.BytesWritten;
-            return true;
+            return outBuffer;
         }
 
-        public void UpdateProgress(long packetId, int addedBytes)
+        public byte[]? Finalize(long id, bool isIncoming)
         {
-            if (_states.TryGetValue(packetId, out var state))
+            var bufferMap = isIncoming ? _incomingBuffer : _outgoingBuffer;
+            if (bufferMap.Remove(id, out var completedBuffer))
             {
-                state.BytesWritten += addedBytes;
-                _states[packetId] = state;
+                return completedBuffer;
             }
-        }
-
-        public bool IsComplete(long packetId)
-        {
-            return _states.TryGetValue(packetId, out var state) && state.BytesWritten >= state.TotalExpected;
-        }
-
-        public void Release(long packetId)
-        {
-            if (_states.Remove(packetId, out var state))
-            {
-                _pool.Return(state.Buffer);
-            }
+            return null;
         }
     }
 }
