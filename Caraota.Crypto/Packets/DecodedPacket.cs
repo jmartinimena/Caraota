@@ -33,9 +33,12 @@ namespace Caraota.Crypto.Packets
             headerSpan.CopyTo(buffer[..4]);
             data[4..].CopyTo(buffer[4..]);
 
+            Span<byte> bufferIv = new byte[iv.Length];
+            iv.CopyTo(bufferIv);
+
             int totalProcessed = payloadLength + 4;
 
-            IV = iv;
+            IV = bufferIv;
             Header = headerSpan;
             IsIncoming = isIncoming;
             Payload = buffer.Slice(4, payloadLength);

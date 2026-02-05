@@ -70,24 +70,16 @@ public sealed class MapleSession
     {
         var handshakePacket = new HandshakePacketEventArgs(new MapleSessionEventArgs(winDivertPacket, default), payload);
 
-        try
-        {
-            if (SessionSuccess) return;
+        if (SessionSuccess) return;
 
-            _serverRecv = new MapleCrypto(handshakePacket.RIV, version);
-            _serverSend = new MapleCrypto(handshakePacket.RIV, version);
-            _clientRecv = new MapleCrypto(handshakePacket.SIV, version);
-            _clientSend = new MapleCrypto(handshakePacket.SIV, version);
+        _serverRecv = new MapleCrypto(handshakePacket.RIV, version);
+        _serverSend = new MapleCrypto(handshakePacket.RIV, version);
+        _clientRecv = new MapleCrypto(handshakePacket.SIV, version);
+        _clientSend = new MapleCrypto(handshakePacket.SIV, version);
 
-            SessionSuccess = true;
+        SessionSuccess = true;
 
-            OnHandshake?.Invoke(this, handshakePacket);
-        }
-        catch (Exception ex)
-        {
-            SessionSuccess = false;
-            throw new MapleSessionException("Failed to initialize crypto session", ex);
-        }
+        OnHandshake?.Invoke(this, handshakePacket);
     }
 
     public void DecryptPacket(WinDivertPacketEventArgs args, DecodedPacket packet, bool isIncoming)
