@@ -1,13 +1,14 @@
 ﻿using Caraota.Crypto.Packets;
+using Caraota.NET.Infrastructure.Interception;
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Diagnostics;
 
-namespace Caraota.NET.Events
+namespace Caraota.NET.Common.Events
 {
-    public readonly ref struct HandshakePacketEventArgs
+    public readonly ref struct HandshakeSessionPacket
     {
-        public MapleSessionEventArgs MapleSessionEventArgs { get; }
+        public MapleSessionPacket MapleSessionEventArgs { get; }
         public ReadOnlySpan<byte> Packet { get; }
         public ReadOnlySpan<byte> Payload { get; }
         public readonly ushort Opcode { get; }
@@ -16,7 +17,7 @@ namespace Caraota.NET.Events
         public ReadOnlySpan<byte> RIV { get; }
         public readonly byte Locale { get; }
 
-        public HandshakePacketEventArgs(MapleSessionEventArgs mapleSessionEventArgs, ReadOnlySpan<byte> packet)
+        public HandshakeSessionPacket(MapleSessionPacket mapleSessionEventArgs, ReadOnlySpan<byte> packet)
         {
             MapleSessionEventArgs = mapleSessionEventArgs;
             Packet = packet;
@@ -55,7 +56,7 @@ namespace Caraota.NET.Events
         private readonly long _timestamp = Stopwatch.GetTimestamp();
         public readonly string FormattedTime => PacketUtils.GetRealTime(_timestamp).ToString("HH:mm:ss:fff");
 
-        public HandshakeEventArgs(HandshakePacketEventArgs args) 
+        public HandshakeEventArgs(HandshakeSessionPacket args)
         {
             PayloadLen = args.Packet.Length;
             SIVLen = args.SIV.Length;

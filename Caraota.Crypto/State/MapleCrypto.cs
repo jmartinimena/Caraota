@@ -3,13 +3,13 @@
 using Caraota.Crypto.Packets;
 using Caraota.Crypto.Algorithms;
 
-namespace Caraota.Crypto
+namespace Caraota.Crypto.State
 {
-    public class MapleCrypto
+    public class MapleCrypto : IMapleEncryptor, IMapleDecryptor
     {
         public static ushort Version { get; private set; }
 
-        public Memory<byte> IV = new byte[4];
+        public Memory<byte> IV { get; } = new byte[4];
 
         private static readonly byte[] _shiftTable = {
             0xEC, 0x3F, 0x77, 0xA4, 0x45, 0xD0, 0x71, 0xBF, 0xB7, 0x98, 0x20, 0xFC, 0x4B, 0xE9, 0xB3, 0xE1,
@@ -68,7 +68,7 @@ namespace Caraota.Crypto
 
         private static readonly byte[] DefaultSeed = [0xf2, 0x53, 0x50, 0xc6];
 
-        public void Update()
+        private void Update()
         {
             Span<byte> seed = stackalloc byte[4];
             DefaultSeed.CopyTo(seed);
@@ -82,11 +82,11 @@ namespace Caraota.Crypto
         }
 
         [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
-        public bool Validate(DecodedPacket packet, bool isIncoming)
+        public bool Validate(DecodedPacket packet)
         {
             if (packet.Header.Length < 4) return false;
 
-            int expectedA = isIncoming ? -(Version + 1) : Version;
+            int expectedA = packet.IsIncoming ? -(Version + 1) : Version;
 
             ReadOnlySpan<byte> iv = IV.Span;
 

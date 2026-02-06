@@ -1,4 +1,4 @@
-﻿namespace Caraota.NET.Exceptions
+﻿namespace Caraota.NET.Common.Exceptions
 {
     public class MapleSessionException : Exception
     {

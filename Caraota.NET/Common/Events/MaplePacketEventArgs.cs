@@ -1,6 +1,6 @@
 ﻿using Caraota.Crypto.Packets;
 
-namespace Caraota.NET.Events
+namespace Caraota.NET.Common.Events
 {
     public readonly struct MaplePacketEventArgs(MaplePacket packet, bool hijacked)
     {

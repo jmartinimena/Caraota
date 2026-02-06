@@ -1,6 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 
-namespace Caraota.NET.Utils
+namespace Caraota.NET.Common.Utils
 {
     internal static class Interop
     {

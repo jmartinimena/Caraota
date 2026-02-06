@@ -1,7 +1,8 @@
-﻿using Caraota.Crypto.Processing;
+﻿using System.Diagnostics;
 using System.Buffers.Binary;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
+
+using Caraota.Crypto.State;
 
 namespace Caraota.Crypto.Packets
 {

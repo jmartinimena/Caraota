@@ -2,7 +2,7 @@
 
 using Caraota.Crypto.Packets;
 
-namespace Caraota.NET.Performance
+namespace Caraota.NET.Common.Performance
 {
     public static class Pools
     {

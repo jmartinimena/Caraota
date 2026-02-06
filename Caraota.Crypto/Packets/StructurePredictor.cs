@@ -2,9 +2,7 @@
 using System.Diagnostics;
 using System.Buffers.Binary;
 
-using Caraota.Crypto.Packets;
-
-namespace Caraota.Crypto.Processing
+namespace Caraota.Crypto.Packets
 {
     public class StructurePredictor
     {

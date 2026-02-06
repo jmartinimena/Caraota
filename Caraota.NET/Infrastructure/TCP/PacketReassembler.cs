@@ -1,9 +1,9 @@
-﻿namespace Caraota.NET.TCP
+﻿namespace Caraota.NET.Infrastructure.TCP
 {
     public class PacketReassembler
     {
-        private readonly Dictionary<long, byte[]> _incomingBuffer = new();
-        private readonly Dictionary<long, byte[]> _outgoingBuffer = new();
+        private readonly Dictionary<long, byte[]> _incomingBuffer = [];
+        private readonly Dictionary<long, byte[]> _outgoingBuffer = [];
 
         public bool IsFragment(long id, int leftoversLength, bool isIncoming)
         {

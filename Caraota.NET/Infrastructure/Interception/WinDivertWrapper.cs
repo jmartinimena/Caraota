@@ -1,33 +1,34 @@
-﻿using System.Reflection;
-using System.Diagnostics;
+﻿using Caraota.NET.Common.Events;
+using Caraota.NET.Common.Utils;
+using Caraota.NET.Infrastructure.TCP;
 using System.Buffers.Binary;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq.Expressions;
-using System.Runtime.InteropServices;
+using System.Reflection;
 using System.Runtime.CompilerServices;
-
+using System.Runtime.InteropServices;
 using WinDivertSharp;
 
-using Caraota.NET.Events;
-using Caraota.NET.Utils;
-
-namespace Caraota.NET.Interception
+namespace Caraota.NET.Infrastructure.Interception
 {
     internal sealed class WinDivertWrapper : IWinDivertSender, IDisposable
     {
         public delegate void PacketEventHandler(WinDivertPacketEventArgs args);
 
-        public event PacketEventHandler? OnOutboundPacket;
-        public event PacketEventHandler? OnInboundPacket;
-        public event Action<Exception>? OnError;
+        public event Action<Exception>? Error;
+        public event PacketEventHandler? PacketReceived;
 
         private bool _isRunning;
         private Thread? _captureThread;
 
         private readonly IntPtr _handle;
+        private readonly TcpStackArchitect _tcpStackArchitect;
 
         public WinDivertWrapper(string filter)
         {
+            _tcpStackArchitect = new();
+
             _handle = WinDivert.WinDivertOpen(
                 filter,
                 WinDivertLayer.Network,
@@ -63,6 +64,8 @@ namespace Caraota.NET.Interception
 
         private void CaptureLoop()
         {
+            Interop.SetThreadAffinity(4);
+
             WinDivertAddress address = default;
             WinDivertBuffer buffer = new();
 
@@ -97,7 +100,7 @@ namespace Caraota.NET.Interception
 
         private void ProcessOutboundPacket(WinDivertBuffer buffer, WinDivertAddress address, uint len)
         {
-            OnOutboundPacket!.Invoke(new WinDivertPacketEventArgs(buffer.AsSpan(len), address));
+            PacketReceived!.Invoke(new WinDivertPacketEventArgs(buffer.AsSpan(len), address, false));
         }
 
         private uint _lastInboundSeq = 0;
@@ -115,7 +118,7 @@ namespace Caraota.NET.Interception
 
             _lastInboundSeq = currentSeq;
 
-            OnInboundPacket!.Invoke(new WinDivertPacketEventArgs(span, address));
+            PacketReceived!.Invoke(new WinDivertPacketEventArgs(span, address, true));
         }
 
         private void HandleWinDivertError()
@@ -132,7 +135,7 @@ namespace Caraota.NET.Interception
                     return;
 
                 default:
-                    OnError?.Invoke(new Win32Exception(error));
+                    Error?.Invoke(new Win32Exception(error));
                     return;
             }
         }
@@ -151,6 +154,12 @@ namespace Caraota.NET.Interception
 
             if (!WinDivert.WinDivertSend(_handle, _sendBuffer, (uint)packet.Length, ref address))
                 ThrowLastWin32Error();
+        }
+
+        public void ReplaceAndSend(ReadOnlySpan<byte> original, ReadOnlySpan<byte> payload, WinDivertAddress address, bool isIncoming)
+        {
+            var replacement = _tcpStackArchitect.ReplacePayload(original, payload, isIncoming: true);
+            SendPacket(replacement, address);
         }
 
         public void Stop()

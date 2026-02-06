@@ -1,6 +1,4 @@
-﻿using Caraota.Crypto.Packets;
-
-namespace Caraota.Crypto.Processing
+﻿namespace Caraota.Crypto.Packets
 {
     public static class PacketFactory
     {

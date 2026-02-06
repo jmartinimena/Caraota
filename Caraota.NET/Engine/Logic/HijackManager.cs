@@ -1,9 +1,7 @@
-﻿using Caraota.NET.Events;
+﻿using Caraota.Crypto.Packets;
+using Caraota.NET.Infrastructure.Interception;
 
-using Caraota.Crypto.Packets;
-using Caraota.Crypto.Processing;
-
-namespace Caraota.NET.Interception
+namespace Caraota.NET.Engine.Logic
 {
     public class HijackManager
     {
@@ -12,12 +10,12 @@ namespace Caraota.NET.Interception
 
         private static readonly byte[] HijackPattern = [.. "3A68696A61636B" // :hijack
             .Chunk(2).Select(s => Convert.ToByte(new string(s), 16))];
-        internal void ProcessQueue(ref MapleSessionEventArgs args, bool isIncoming)
+        internal void ProcessQueue(ref MapleSessionPacket args)
         {
-            var hijackQueue = isIncoming ? _inHijackQueue : _outHijackQueue;
+            var hijackQueue = args.DecodedPacket.IsIncoming ? _inHijackQueue : _outHijackQueue;
             if (hijackQueue.Count == 0) return;
 
-            if (args.DecodedPacket.Opcode == (isIncoming ? 122 : 46) &&
+            if (args.DecodedPacket.Opcode == (args.DecodedPacket.IsIncoming ? 122 : 46) &&
                 args.DecodedPacket.Data.IndexOf(HijackPattern) != -1)
             {
                 args.DecodedPacket = PacketFactory.Parse(hijackQueue.Dequeue());

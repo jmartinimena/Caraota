@@ -1,9 +1,8 @@
 ﻿using System.Threading.Channels;
+using Caraota.NET.Common.Events;
+using Caraota.NET.Common.Performance;
 
-using Caraota.NET.Events;
-using Caraota.NET.Performance;
-
-namespace Caraota.NET.Interception
+namespace Caraota.NET.Infrastructure.Interception
 {
     public class PacketDispatcher
     {

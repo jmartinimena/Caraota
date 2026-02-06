@@ -1,31 +1,26 @@
 ﻿using System.Buffers;
 using System.Buffers.Binary;
 
-using Caraota.NET.Events;
-using Caraota.NET.Interception;
-
-namespace Caraota.NET.TCP
+namespace Caraota.NET.Infrastructure.TCP
 {
-    public class TcpStackArchitect(IWinDivertSender sender)
+    public sealed class TcpStackArchitect
     {
-        private readonly IWinDivertSender _winDivertSender = sender;
-
         private ushort _fakeSeq = 0, _fakeAck = 0;
 
         private byte[] _tcpPacketBuffer = ArrayPool<byte>.Shared.Rent(65536);
-        public void ModifyAndSend(MapleSessionEventArgs args, ReadOnlySpan<byte> maplePacket, bool isIncoming)
+        public ReadOnlySpan<byte> ReplacePayload(ReadOnlySpan<byte> tcpPacket, ReadOnlySpan<byte> payload, bool isIncoming)
         {
-            int ipH = (args.WinDivertPacket[0] & 0x0F) << 2;
-            int tcpH = ((args.WinDivertPacket[ipH + 12] >> 4) & 0x0F) << 2;
+            int ipH = (tcpPacket[0] & 0x0F) << 2;
+            int tcpH = ((tcpPacket[ipH + 12] >> 4) & 0x0F) << 2;
             int totalHeader = ipH + tcpH;
-            int totalSize = totalHeader + maplePacket.Length;
+            int totalSize = totalHeader + payload.Length;
 
             Span<byte> newTcpSpan = _tcpPacketBuffer.AsSpan(0, totalSize);
 
-            args.WinDivertPacket[..totalHeader].CopyTo(newTcpSpan[..totalHeader]);
-            maplePacket.CopyTo(newTcpSpan[totalHeader..]);
+            tcpPacket[..totalHeader].CopyTo(newTcpSpan[..totalHeader]);
+            payload.CopyTo(newTcpSpan[totalHeader..]);
 
-            var delta = (ushort)Math.Abs(args.WinDivertPacket.Length - totalSize);
+            var delta = (ushort)Math.Abs(tcpPacket.Length - totalSize);
             uint finalSeq, finalAck;
 
             if (isIncoming)
@@ -48,7 +43,9 @@ namespace Caraota.NET.TCP
             ushort oldIpId = BinaryPrimitives.ReadUInt16BigEndian(newTcpSpan.Slice(4, 2));
             BinaryPrimitives.WriteUInt16BigEndian(newTcpSpan.Slice(4, 2), (ushort)(oldIpId + 1));
 
-            _winDivertSender.SendPacket(newTcpSpan, args.Address);
+            return newTcpSpan;
         }
+
+        
     }
 }

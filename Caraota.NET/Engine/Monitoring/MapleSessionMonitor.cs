@@ -1,6 +1,7 @@
-﻿using System.Diagnostics;
+﻿using Caraota.NET.Engine.Session;
+using System.Diagnostics;
 
-namespace Caraota.NET.Models
+namespace Caraota.NET.Engine.Monitoring
 {
     public class MapleSessionMonitor
     {
@@ -34,7 +35,7 @@ namespace Caraota.NET.Models
                 {
                     await Task.Delay(500, _cts.Token);
 
-                    if (_session == null || !_session.SessionSuccess)
+                    if (_session == null || !_session.IsInitialized())
                         continue;
 
                     long idleTime = Environment.TickCount64 - LastPacketInterceptedTime;
@@ -48,7 +49,7 @@ namespace Caraota.NET.Models
                             await OnDisconnected.Invoke();
                         }
 
-                        _session.SessionSuccess = false;
+                        _session.Reset();
                         break;
                     }
                 }
