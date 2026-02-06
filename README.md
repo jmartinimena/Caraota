@@ -58,7 +58,7 @@ Implementación nativa y optimizada del protocolo de MapleStory:
 
 ## 🔧 Requisitos e Instalación
 
-1.  **.NET 8.0 SDK** o superior.
+1.  **.NET 10 SDK** o superior.
 2.  **WinDivert**: Asegúrate de que `WinDivert.dll` y `WinDivert64.sys` estén presentes en el directorio de ejecución.
 3.  **Privilegios de Administrador**: Necesarios para que el driver de WinDivert pueda abrir el handle del stack de red.
 
