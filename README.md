@@ -56,16 +56,6 @@ Implementación nativa y optimizada del protocolo de MapleStory:
 
 ---
 
-## 📂 Estructura del Proyecto
-
-El proyecto está dividido siguiendo principios de responsabilidad única y estandarización de .NET:
-
-* **`Caraota.Crypto`**: Librería pura que contiene la implementación de AES, Shanda y la lógica de `MapleCrypto`. Independiente de la capa de red.
-* **`Caraota.NET`**: El interceptor principal, eventos de sesión (`MaplePacketEventArgs`) y el wrapper de WinDivert.
-* **`Native`**: Binarios nativos optimizados para arquitecturas `x64` y `x86`.
-
----
-
 ## 🔧 Requisitos e Instalación
 
 1.  **.NET 8.0 SDK** o superior.
