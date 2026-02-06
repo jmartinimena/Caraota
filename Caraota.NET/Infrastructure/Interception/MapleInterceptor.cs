@@ -38,7 +38,9 @@ namespace Caraota.NET.Infrastructure.Interception
             _session = new MapleSession(_wrapper);
             _session.PacketDecrypted += OnPacketDecrypted;
 
-            SessionMonitor.Start(_session);
+            // Algunos servidores mantienen pings constantes mientras que otros no
+            // Se debe buscar una forma diferente de detectar desconexion
+            //SessionMonitor.Start(_session);
         }
 
         private void OnError(Exception e)

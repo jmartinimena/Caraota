@@ -5,7 +5,7 @@ namespace Caraota.NET.Engine.Monitoring
 {
     public class MapleSessionMonitor
     {
-        public event DisconnectedEventDelegate? OnDisconnected;
+        public event DisconnectedEventDelegate? Disconnected;
 
         public delegate Task DisconnectedEventDelegate();
 
@@ -40,13 +40,13 @@ namespace Caraota.NET.Engine.Monitoring
 
                     long idleTime = Environment.TickCount64 - LastPacketInterceptedTime;
 
-                    if (idleTime >= 8000)
+                    if (idleTime >= 10000)
                     {
                         Debug.WriteLine($"[Monitor] Timeout detectado ({idleTime}ms). Disparando OnDisconnected.");
 
-                        if (OnDisconnected != null)
+                        if (Disconnected != null)
                         {
-                            await OnDisconnected.Invoke();
+                            await Disconnected.Invoke();
                         }
 
                         _session.Reset();

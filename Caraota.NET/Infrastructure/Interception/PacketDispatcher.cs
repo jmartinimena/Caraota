@@ -6,8 +6,8 @@ namespace Caraota.NET.Infrastructure.Interception
 {
     public class PacketDispatcher
     {
-        public event MaplePacketEventDelegate? OnOutgoing;
-        public event MaplePacketEventDelegate? OnIncoming;
+        public event MaplePacketEventDelegate? OutgoingReceived;
+        public event MaplePacketEventDelegate? IncomingReceived;
         public delegate Task MaplePacketEventDelegate(MaplePacketEventArgs packet);
 
         private readonly Channel<MaplePacketEventArgs> _channel = Channel.CreateBounded<MaplePacketEventArgs>(new BoundedChannelOptions(10000)
@@ -34,9 +34,9 @@ namespace Caraota.NET.Infrastructure.Interception
                 try
                 {
                     if (args.Packet.IsIncoming)
-                        await OnIncoming?.Invoke(args)!;
+                        await IncomingReceived?.Invoke(args)!;
                     else
-                        await OnOutgoing?.Invoke(args)!;
+                        await OutgoingReceived?.Invoke(args)!;
                 }
                 finally
                 {

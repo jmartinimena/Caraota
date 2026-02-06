@@ -45,7 +45,5 @@ namespace Caraota.NET.Infrastructure.TCP
 
             return newTcpSpan;
         }
-
-        
     }
 }
