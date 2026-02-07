@@ -29,7 +29,7 @@ He llevado el rendimiento al límite técnico de C# y .NET 10, reduciendo el tie
 | **Criptografía** | Bitwise & Local Registers | ~2,500 ns |
 | **Gestión de Memoria** | Zero-Allocation (ArrayPool) | 0 B Garbage |
 | **Validación de IV** | Double-Buffer Logic | Estabilidad total |
-| **Pipeline Global** | **Ultra-Low Latency** | **~80,000 ns** |
+| **Pipeline Global** | **Ultra-Low Latency** | **~70,000 ns** |
 
 ---
 
