@@ -9,4 +9,5 @@
   <Project Path="Caraota.NET/Caraota.NET.csproj">
     <Platform Solution="*|x64" Project="x64" />
   </Project>
+  <Project Path="ConsoleApp/ConsoleApp.csproj" Id="4f0e28e0-b426-4162-afc1-d2c10003f0d9" />
 </Solution>

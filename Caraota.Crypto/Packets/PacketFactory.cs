@@ -3,18 +3,18 @@
     public static class PacketFactory
     {
         public static MaplePacket? Create(
-            ReadOnlySpan<byte> data,
+            Span<byte> data,
             ReadOnlySpan<byte> iv,
             bool isIncoming)
         {
             if (data.Length < 4) return null;
 
-            var decodedPacket = new DecodedPacket(data, iv, isIncoming);
+            var decodedPacket = new MaplePacketView(data, iv, isIncoming);
             return new MaplePacket(decodedPacket);
         }
 
-        public static DecodedPacket Parse(
-            ReadOnlySpan<byte> data,
+        public static MaplePacketView Parse(
+            Span<byte> data,
             ReadOnlySpan<byte> iv,
             bool isIncoming,
             long? parentId = null,
@@ -22,14 +22,14 @@
         {
             if (data.Length < 4) return default!;
 
-            return new DecodedPacket(data, iv, isIncoming, parentId, parentReaded);
+            return new MaplePacketView(data, iv, isIncoming, parentId, parentReaded);
         }
 
-        public static DecodedPacket Parse(MaplePacket packet)
+        public static MaplePacketView Parse(MaplePacket packet)
         {
             if (packet.DataLen < 4) return default!;
 
-            return new DecodedPacket(
+            return new MaplePacketView(
                 packet.Data.Span, 
                 packet.IV.Span, 
                 packet.IsIncoming);

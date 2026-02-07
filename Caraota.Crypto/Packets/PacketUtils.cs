@@ -9,15 +9,15 @@ namespace Caraota.Crypto.Packets
     public static class PacketUtils
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int GetLength(ReadOnlySpan<byte> header)
+        public unsafe static int GetLength(ReadOnlySpan<byte> header)
         {
-            if (header.Length < 4)
-                return -1;
+            fixed (byte* ptr = header)
+            {
+                ushort versionMask = Unsafe.ReadUnaligned<ushort>(ptr);
+                ushort lengthMask = Unsafe.ReadUnaligned<ushort>(ptr + 2);
 
-            ushort versionMask = BinaryPrimitives.ReadUInt16LittleEndian(header[..2]);
-            ushort lengthMask = BinaryPrimitives.ReadUInt16LittleEndian(header[2..4]);
-
-            return versionMask ^ lengthMask;
+                return versionMask ^ lengthMask;
+            }
         }
 
 
@@ -48,7 +48,7 @@ namespace Caraota.Crypto.Packets
             return header;
         }
 
-        public static string Predict(DecodedPacket packet)
+        public static string Predict(MaplePacketView packet)
         {
             if (packet.Payload.Length <= 4)
                 return string.Empty;

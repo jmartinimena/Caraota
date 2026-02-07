@@ -9,7 +9,7 @@ namespace Caraota.Crypto.Packets
         private readonly ReadOnlyMemory<byte> _packet;
         private string _structure = string.Empty;
 
-        public StructurePredictor(DecodedPacket packet)
+        public StructurePredictor(MaplePacketView packet)
         {
             _packet = packet.Payload.ToArray();
 

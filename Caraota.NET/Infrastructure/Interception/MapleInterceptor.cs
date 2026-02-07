@@ -49,7 +49,7 @@ namespace Caraota.NET.Infrastructure.Interception
             SessionMonitor.LastPacketInterceptedTime = Environment.TickCount;
 
             if (!TcpHelper.TryExtractPayload(args.Packet,
-                out ReadOnlySpan<byte> payload))
+                out Span<byte> payload))
                 return;
 
             if (!HandleSessionState(args, payload))
@@ -63,7 +63,7 @@ namespace Caraota.NET.Infrastructure.Interception
             SessionMonitor.LastPacketInterceptedTime = Environment.TickCount;
 
             if (!TcpHelper.TryExtractPayload(args.Packet,
-                out ReadOnlySpan<byte> payload))
+                out Span<byte> payload))
                 return;
 
             _session!.Decrypt(args, payload);

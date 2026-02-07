@@ -33,7 +33,7 @@ public sealed class MapleSession(IWinDivertSender winDivertSender)
     public void Reset()
         => _sessionInitializer.SessionSuccess = false;
 
-    public void Decrypt(WinDivertPacketEventArgs args, ReadOnlySpan<byte> payload, long? parentId = null, int? parentReaded = null)
+    public void Decrypt(WinDivertPacketEventArgs args, Span<byte> payload, long? parentId = null, int? parentReaded = null)
     {
         var decryptor = _sessionInitializer.GetDecryptor(args.IsIncoming)!;
         var packet = PacketFactory.Parse(payload, decryptor.IV.Span, args.IsIncoming, parentId, parentReaded);
@@ -83,7 +83,7 @@ public sealed class MapleSession(IWinDivertSender winDivertSender)
         return true;
     }
 
-    private void DecryptLeftover(WinDivertPacketEventArgs args, DecodedPacket parentPacket)
+    private void DecryptLeftover(WinDivertPacketEventArgs args, MaplePacketView parentPacket)
     {
         if (parentPacket.Leftovers.IsEmpty) return;
 

@@ -10,14 +10,14 @@ namespace Caraota.Crypto.Packets
         private byte[]? _fullBuffer;
 
         public int DataLen { get; private set; }
-        public int IvLen { get; private set; }
-        public int HeaderLen { get; private set; }
+        public const int IvLen = 4;
+        public const int HeaderLen = 4;
         public int PayloadLen { get; private set; }
 
-        public ReadOnlyMemory<byte> Data => _fullBuffer.AsMemory(0, DataLen);
+        public Memory<byte> Data => _fullBuffer.AsMemory(0, DataLen);
         public ReadOnlyMemory<byte> IV => _fullBuffer.AsMemory(DataLen, IvLen);
-        public ReadOnlyMemory<byte> Header => _fullBuffer.AsMemory(DataLen + IvLen, HeaderLen);
-        public ReadOnlyMemory<byte> Payload => _fullBuffer.AsMemory(DataLen + IvLen + HeaderLen, PayloadLen);
+        public ReadOnlyMemory<byte> Header => _fullBuffer.AsMemory(0, HeaderLen);
+        public ReadOnlyMemory<byte> Payload => _fullBuffer.AsMemory(HeaderLen, PayloadLen);
 
         public ushort Opcode { get; private set; }
         public bool IsIncoming { get; private set; }
@@ -31,29 +31,24 @@ namespace Caraota.Crypto.Packets
         // Constructor sin parametros para el ObjectPool
         public MaplePacket() { }
 
-        public MaplePacket(DecodedPacket maplePacket) => Initialize(maplePacket);
+        public MaplePacket(MaplePacketView maplePacket) => Initialize(maplePacket);
 
-        public void Initialize(DecodedPacket maplePacket)
+        public void Initialize(MaplePacketView maplePacket)
         {
             DataLen = maplePacket.Data.Length;
-            IvLen = maplePacket.IV.Length;
-            HeaderLen = maplePacket.Header.Length;
             PayloadLen = maplePacket.Payload.Length;
 
-            int totalNeeded = DataLen + IvLen + HeaderLen + PayloadLen;
+            int totalNeeded = DataLen + IvLen;
 
             _fullBuffer = ArrayPool<byte>.Shared.Rent(totalNeeded);
 
             maplePacket.Data.CopyTo(_fullBuffer.AsSpan(0, DataLen));
             maplePacket.IV.CopyTo(_fullBuffer.AsSpan(DataLen, IvLen));
-            maplePacket.Header.CopyTo(_fullBuffer.AsSpan(DataLen + IvLen, HeaderLen));
-            maplePacket.Payload.CopyTo(_fullBuffer.AsSpan(DataLen + IvLen + HeaderLen, PayloadLen));
-
-            Opcode = BinaryPrimitives.ReadUInt16LittleEndian(_fullBuffer.AsSpan(DataLen + IvLen + HeaderLen, 2));
 
             IsIncoming = maplePacket.IsIncoming;
+            _timestamp = maplePacket.Id;
 
-            _timestamp = Stopwatch.GetTimestamp();
+            Opcode = BinaryPrimitives.ReadUInt16LittleEndian(_fullBuffer.AsSpan(4, 2));
         }
 
         public string Predict() => PacketUtils.Predict(Payload);
@@ -65,6 +60,7 @@ namespace Caraota.Crypto.Packets
                 ArrayPool<byte>.Shared.Return(_fullBuffer);
                 _fullBuffer = null;
             }
+
             GC.SuppressFinalize(this);
         }
     }

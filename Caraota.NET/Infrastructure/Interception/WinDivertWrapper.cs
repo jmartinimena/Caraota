@@ -185,10 +185,10 @@ namespace Caraota.NET.Infrastructure.Interception
     internal static unsafe class WinDivertBufferExtensions
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe ReadOnlySpan<byte> AsSpan(this WinDivertBuffer buffer, uint length)
+        public static unsafe Span<byte> AsSpan(this WinDivertBuffer buffer, uint length)
         {
             IntPtr ptr = BufferAccessor.GetPointer(buffer)!;
-            return new ReadOnlySpan<byte>(ptr.ToPointer(), (int)length);
+            return new Span<byte>(ptr.ToPointer(), (int)length);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

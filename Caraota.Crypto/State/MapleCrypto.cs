@@ -45,7 +45,7 @@ namespace Caraota.Crypto.State
             AES.StartAes(key);
         }
 
-        public void Encrypt(ref DecodedPacket packet)
+        public void Encrypt(ref MaplePacketView packet)
         {
             var iv = IV.Span;
             var payload = packet.Payload;
@@ -56,7 +56,7 @@ namespace Caraota.Crypto.State
             Update();
         }
 
-        public void Decrypt(ref DecodedPacket packet)
+        public void Decrypt(ref MaplePacketView packet)
         {
             var iv = IV.Span;
             var payload = packet.Payload;
@@ -82,7 +82,7 @@ namespace Caraota.Crypto.State
         }
 
         [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
-        public bool Validate(DecodedPacket packet)
+        public bool Validate(MaplePacketView packet)
         {
             if (packet.Header.Length < 4) return false;
 

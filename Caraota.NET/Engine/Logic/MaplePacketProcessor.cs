@@ -13,14 +13,14 @@ namespace Caraota.NET.Engine.Logic
         private readonly IMapleEncryptor _serverEncryptor = sessionInitializer.GetEncryptor(true)!;
         private readonly IMapleEncryptor _clientEncryptor = sessionInitializer.GetEncryptor(false)!;
 
-        public void Encrypt(ref DecodedPacket packet)
+        public void Encrypt(ref MaplePacketView packet)
         {
             var encryptor = packet.IsIncoming ? _serverEncryptor : _clientEncryptor;
 
             encryptor.Encrypt(ref packet);
         }
 
-        public void Decrypt(ref DecodedPacket packet)
+        public void Decrypt(ref MaplePacketView packet)
         {
             var decryptor = packet.IsIncoming ? _serverDecryptor : _clientDecryptor;
 

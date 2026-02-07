@@ -40,7 +40,7 @@ namespace Caraota.NET.Engine.Monitoring
 
                     long idleTime = Environment.TickCount64 - LastPacketInterceptedTime;
 
-                    if (idleTime >= 8000)
+                    if (idleTime >= 10000)
                     {
                         Debug.WriteLine($"[Monitor] Timeout detectado ({idleTime}ms). Disparando OnDisconnected.");
 
