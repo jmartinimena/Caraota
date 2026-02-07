@@ -1,6 +1,7 @@
-﻿using Caraota.Crypto.Packets;
+﻿using Caraota.NET.Engine.Session;
+
 using Caraota.Crypto.State;
-using Caraota.NET.Engine.Session;
+using Caraota.Crypto.Packets;
 
 namespace Caraota.NET.Engine.Logic
 {
@@ -16,30 +17,14 @@ namespace Caraota.NET.Engine.Logic
         {
             var encryptor = packet.IsIncoming ? _serverEncryptor : _clientEncryptor;
 
-            if (encryptor.Validate(packet))
-                encryptor.Encrypt(ref packet);
+            encryptor.Encrypt(ref packet);
         }
 
         public void Decrypt(ref DecodedPacket packet)
         {
             var decryptor = packet.IsIncoming ? _serverDecryptor : _clientDecryptor;
 
-            if (decryptor.Validate(packet))
-                decryptor.Decrypt(ref packet);
-        }
-
-        public bool ValidateDecrypt(DecodedPacket packet)
-        {
-            var decryptor = packet.IsIncoming ? _serverDecryptor : _clientDecryptor;
-
-            return decryptor.Validate(packet);
-        }
-
-        public bool ValidateEncrypt(DecodedPacket packet)
-        {
-            var decryptor = packet.IsIncoming ? _serverEncryptor : _clientEncryptor;
-
-            return decryptor.Validate(packet);
+            decryptor.Decrypt(ref packet);
         }
     }
 }

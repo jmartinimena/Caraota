@@ -1,6 +1,5 @@
 ﻿using System.Diagnostics;
 using System.Buffers.Binary;
-using System.Buffers;
 
 namespace Caraota.Crypto.Packets
 {

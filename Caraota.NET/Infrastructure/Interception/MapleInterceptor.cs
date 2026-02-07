@@ -34,23 +34,36 @@ namespace Caraota.NET.Infrastructure.Interception
             GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
 
             _wrapper = WinDivertFactory.CreateForTcpPort(port);
+            _wrapper.PacketReceived += OnHandshakeInit;
             _wrapper.Error += OnError;
-            _wrapper.PacketReceived += OnPacketReceived;
             _wrapper.Start();
 
             _session = new MapleSession(_wrapper);
             _session.PacketDecrypted += OnPacketDecrypted;
+
+            SessionMonitor.Start(_session);
         }
 
-        private void OnPacketReceived(WinDivertPacketEventArgs args)
+        private void OnHandshakeInit(WinDivertPacketEventArgs args)
         {
-            //_sw.Restart();
+            SessionMonitor.LastPacketInterceptedTime = Environment.TickCount;
 
             if (!TcpHelper.TryExtractPayload(args.Packet,
                 out ReadOnlySpan<byte> payload))
                 return;
 
             if (!HandleSessionState(args, payload))
+                return;
+        }
+
+        private void OnPacketReceived(WinDivertPacketEventArgs args)
+        {
+            _sw.Restart();
+
+            SessionMonitor.LastPacketInterceptedTime = Environment.TickCount;
+
+            if (!TcpHelper.TryExtractPayload(args.Packet,
+                out ReadOnlySpan<byte> payload))
                 return;
 
             _session!.Decrypt(args, payload);
@@ -68,8 +81,8 @@ namespace Caraota.NET.Infrastructure.Interception
             if (!_session!.ProcessLeftovers(args))
                 _session.EncryptAndSend(args);
 
-            //double ns = _sw.Elapsed.TotalNanoseconds;
-            //LogDiagnostic(ns);
+            double ns = _sw.Elapsed.TotalNanoseconds;
+            LogDiagnostic(ns);
         }
 
         private void OnError(Exception e)
@@ -82,6 +95,9 @@ namespace Caraota.NET.Infrastructure.Interception
             if (!_session!.IsInitialized())
             {
                 var handshakeArgs = _session.Initialize(winDivertPacket, payload);
+
+                _wrapper!.PacketReceived -= OnHandshakeInit;
+                _wrapper!.PacketReceived += OnPacketReceived;
 
                 HandshakeReceived?.Invoke(new HandshakeEventArgs(handshakeArgs));
 

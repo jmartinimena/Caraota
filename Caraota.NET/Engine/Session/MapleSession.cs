@@ -68,24 +68,16 @@ public sealed class MapleSession(IWinDivertSender winDivertSender)
 
         byte[] outBuffer = _reassembler.GetOrCreateBuffer(packet.Id, packet.TotalLength, packet.IsIncoming);
 
-        if (_packetProcessor!.ValidateEncrypt(packet))
-        {
-            _packetProcessor.Encrypt(ref packet);
-            packet.Data.CopyTo(outBuffer.AsSpan().Slice(packet.ParentReaded, packet.Data.Length));
-        }
-        else
-        {
-            packet.Header.CopyTo(outBuffer.AsSpan().Slice(packet.ParentReaded, 4));
-            packet.Payload.CopyTo(outBuffer.AsSpan().Slice(packet.ParentReaded + 4, packet.Payload.Length));
-        }
+        _packetProcessor!.Encrypt(ref packet);
+        packet.Header.CopyTo(outBuffer.AsSpan().Slice(packet.ParentReaded, 4));
+        packet.Payload.CopyTo(outBuffer.AsSpan().Slice(packet.ParentReaded + 4, packet.Payload.Length));
 
         if (packet.Leftovers.Length == 0)
         {
             byte[]? finalData = _reassembler.Finalize(packet.Id, packet.IsIncoming);
+
             if (finalData != null)
-            {
                 _winDivertSender.ReplaceAndSend(args.WinDivertPacket, finalData.AsSpan(), args.Address);
-            }
         }
 
         return true;
