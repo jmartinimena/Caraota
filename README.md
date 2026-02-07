@@ -7,7 +7,7 @@
 ![GitHub last commit](https://img.shields.io/github/last-commit/jmartinimena/Caraota?style=flat&color=brightgreen)
 [![.NET 10](https://img.shields.io/badge/-%2010.0-512BD4?style=flat&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 ![C#](https://img.shields.io/badge/C%23-14.0-239120?style=flat&logo=csharp)
-![Latency](https://img.shields.io/badge/Latency-80%C2%B5s-blueviolet?style=flat&logo=speedtest)
+![Latency](https://img.shields.io/badge/Latency-70%C2%B5s-blueviolet?style=flat&logo=speedtest)
 ![Memory](https://img.shields.io/badge/Memory-Zero--Alloc-success?style=flat)
 ![Encryption](https://img.shields.io/badge/Crypto-Shanda%20%2F%20AES-informational?style=flat)
 ![License](https://img.shields.io/github/license/jmartinimena/Caraota?style=flat&color=yellow)
@@ -22,14 +22,14 @@ Caraota es un motor de interceptación de red diseñado para la investigación d
 
 ## 🚀 Benchmarks de Rendimiento
 
-He llevado el rendimiento al límite técnico de C# y .NET 10, reduciendo el tiempo de procesamiento por paquete de **1,000,000 ns** a solo **~80,000 ns** (aun puede mejorar).
+He llevado el rendimiento al límite técnico de C# y .NET 10, reduciendo el tiempo de procesamiento por paquete (recibir>descifrar>cifrar>enviar) de **1,000,000 ns** a solo **~70,000 ns** (0.07 ms).
 
 | Componente | Optimización | Impacto |
 | :--- | :--- | :--- |
 | **Criptografía** | Bitwise & Local Registers | ~2,500 ns |
 | **Gestión de Memoria** | Zero-Allocation (ArrayPool) | 0 B Garbage |
 | **Validación de IV** | Double-Buffer Logic | Estabilidad total |
-| **Pipeline Global** | **Ultra-Low Latency** | **~80,000 ns** |
+| **Pipeline Global** | **Ultra-Low Latency** | **~70,000 ns** |
 
 ---
 
