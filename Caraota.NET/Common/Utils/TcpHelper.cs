@@ -2,7 +2,7 @@
 
 namespace Caraota.NET.Common.Utils
 {
-    public static class Tcp
+    public static class TcpHelper
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool TryExtractPayload(ReadOnlySpan<byte> tcpPacket, out ReadOnlySpan<byte> payload)

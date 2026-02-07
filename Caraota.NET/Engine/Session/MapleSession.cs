@@ -1,9 +1,9 @@
-﻿using Caraota.Crypto;
-using Caraota.Crypto.Packets;
-using Caraota.NET.Common.Events;
+﻿using Caraota.Crypto.Packets;
+
 using Caraota.NET.Engine.Logic;
-using Caraota.NET.Infrastructure.Interception;
+using Caraota.NET.Common.Events;
 using Caraota.NET.Infrastructure.TCP;
+using Caraota.NET.Infrastructure.Interception;
 
 namespace Caraota.NET.Engine.Session;
 
@@ -14,9 +14,9 @@ public sealed class MapleSession(IWinDivertSender winDivertSender)
 
     private MaplePacketProcessor? _packetProcessor;
 
+    private readonly PacketReassembler _reassembler = new();
     private readonly IWinDivertSender _winDivertSender = winDivertSender;
     private readonly MapleSessionInitializer _sessionInitializer = new(winDivertSender);
-    private readonly PacketReassembler _reassembler = new();
 
     public HandshakeSessionPacket Initialize(WinDivertPacketEventArgs winDivertPacket, ReadOnlySpan<byte> payload)
     {
@@ -54,17 +54,7 @@ public sealed class MapleSession(IWinDivertSender winDivertSender)
         var data = packet.Data;
         var address = args.Address;
         var isIncoming = packet.IsIncoming;
-
-        _winDivertSender.ReplaceAndSend(original, data, address, isIncoming);
-    }
-
-    public void DecryptLeftover(WinDivertPacketEventArgs args, DecodedPacket parentPacket)
-    {
-        if (parentPacket.Leftovers.IsEmpty) return;
-
-        int newOffset = parentPacket.ParentReaded + parentPacket.Header.Length + parentPacket.Payload.Length;
-
-        Decrypt(args, parentPacket.Leftovers, parentPacket.Id, newOffset);
+        _winDivertSender.ReplaceAndSend(original, data, address);
     }
 
     public bool ProcessLeftovers(MapleSessionPacket args)
@@ -78,7 +68,7 @@ public sealed class MapleSession(IWinDivertSender winDivertSender)
 
         byte[] outBuffer = _reassembler.GetOrCreateBuffer(packet.Id, packet.TotalLength, packet.IsIncoming);
 
-        if (_packetProcessor!.Validate(packet))
+        if (_packetProcessor!.ValidateEncrypt(packet))
         {
             _packetProcessor.Encrypt(ref packet);
             packet.Data.CopyTo(outBuffer.AsSpan().Slice(packet.ParentReaded, packet.Data.Length));
@@ -94,10 +84,19 @@ public sealed class MapleSession(IWinDivertSender winDivertSender)
             byte[]? finalData = _reassembler.Finalize(packet.Id, packet.IsIncoming);
             if (finalData != null)
             {
-                _winDivertSender.ReplaceAndSend(args.WinDivertPacket, finalData.AsSpan(), args.Address, packet.IsIncoming);
+                _winDivertSender.ReplaceAndSend(args.WinDivertPacket, finalData.AsSpan(), args.Address);
             }
         }
 
         return true;
+    }
+
+    private void DecryptLeftover(WinDivertPacketEventArgs args, DecodedPacket parentPacket)
+    {
+        if (parentPacket.Leftovers.IsEmpty) return;
+
+        int newOffset = parentPacket.ParentReaded + parentPacket.Header.Length + parentPacket.Payload.Length;
+
+        Decrypt(args, parentPacket.Leftovers, parentPacket.Id, newOffset);
     }
 }

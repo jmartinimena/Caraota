@@ -156,9 +156,10 @@ namespace Caraota.NET.Infrastructure.Interception
                 ThrowLastWin32Error();
         }
 
-        public void ReplaceAndSend(ReadOnlySpan<byte> original, ReadOnlySpan<byte> payload, WinDivertAddress address, bool isIncoming)
+        public void ReplaceAndSend(ReadOnlySpan<byte> original, ReadOnlySpan<byte> payload, WinDivertAddress address)
         {
-            var replacement = _tcpStackArchitect.ReplacePayload(original, payload, isIncoming: true);
+            bool isIncoming = address.Direction == WinDivertDirection.Inbound;
+            var replacement = _tcpStackArchitect.ReplacePayload(original, payload, isIncoming);
             SendPacket(replacement, address);
         }
 

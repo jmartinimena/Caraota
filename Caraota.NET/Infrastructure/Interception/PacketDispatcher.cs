@@ -22,7 +22,7 @@ namespace Caraota.NET.Infrastructure.Interception
             Task.Run(ProcessLogQueueAsync);
         }
 
-        public void Enqueue(MaplePacketEventArgs packet)
+        public void Dispatch(MaplePacketEventArgs packet)
         {
             _channel.Writer.TryWrite(packet);
         }

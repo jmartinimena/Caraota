@@ -28,13 +28,18 @@ namespace Caraota.NET.Engine.Logic
                 decryptor.Decrypt(ref packet);
         }
 
-        public bool Validate(DecodedPacket packet)
+        public bool ValidateDecrypt(DecodedPacket packet)
         {
             var decryptor = packet.IsIncoming ? _serverDecryptor : _clientDecryptor;
 
             return decryptor.Validate(packet);
         }
 
-        
+        public bool ValidateEncrypt(DecodedPacket packet)
+        {
+            var decryptor = packet.IsIncoming ? _serverEncryptor : _clientEncryptor;
+
+            return decryptor.Validate(packet);
+        }
     }
 }

@@ -7,7 +7,7 @@ namespace Caraota.NET.Infrastructure.TCP
     {
         private ushort _fakeSeq = 0, _fakeAck = 0;
 
-        private byte[] _tcpPacketBuffer = ArrayPool<byte>.Shared.Rent(65536);
+        private readonly byte[] _tcpPacketBuffer = ArrayPool<byte>.Shared.Rent(65536);
         public ReadOnlySpan<byte> ReplacePayload(ReadOnlySpan<byte> tcpPacket, ReadOnlySpan<byte> payload, bool isIncoming)
         {
             int ipH = (tcpPacket[0] & 0x0F) << 2;
@@ -39,9 +39,6 @@ namespace Caraota.NET.Infrastructure.TCP
             BinaryPrimitives.WriteUInt32BigEndian(newTcpSpan.Slice(ipH + 4, 4), finalSeq);
             BinaryPrimitives.WriteUInt32BigEndian(newTcpSpan.Slice(ipH + 8, 4), finalAck);
             BinaryPrimitives.WriteUInt16BigEndian(newTcpSpan.Slice(2, 2), (ushort)totalSize);
-
-            ushort oldIpId = BinaryPrimitives.ReadUInt16BigEndian(newTcpSpan.Slice(4, 2));
-            BinaryPrimitives.WriteUInt16BigEndian(newTcpSpan.Slice(4, 2), (ushort)(oldIpId + 1));
 
             return newTcpSpan;
         }

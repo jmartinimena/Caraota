@@ -16,19 +16,19 @@ namespace Caraota.NET.Engine.Session
         private const int VERSION_OFFSET = 2;
         private const int VERSION_SIZE = sizeof(ushort);
 
-        private MapleCrypto? _serverRecv;
-        private MapleCrypto? _serverSend;
-        private MapleCrypto? _clientRecv;
-        private MapleCrypto? _clientSend;
+        private IMapleEncryptor? _serverEncryptor;
+        private IMapleEncryptor? _clientEncryptor;
+        private IMapleDecryptor? _serverDecryptor;
+        private IMapleDecryptor? _clientDecryptor;
 
         private readonly IWinDivertSender _winDivertSender = winDivertSender;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public IMapleDecryptor? GetDecryptor(bool isIncoming)
-        => isIncoming ? _serverRecv : _clientRecv;
+        => isIncoming ? _serverDecryptor : _clientDecryptor;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public IMapleEncryptor? GetEncryptor(bool isIncoming)
-        => isIncoming ? _serverSend : _clientSend;
+        => isIncoming ? _serverEncryptor : _clientEncryptor;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public HandshakeSessionPacket Initialize(WinDivertPacketEventArgs winDivertPacket, ReadOnlySpan<byte> payload)
@@ -66,14 +66,14 @@ namespace Caraota.NET.Engine.Session
             var mapleSession = new MapleSessionPacket(args, default);
             var handshakePacket = new HandshakeSessionPacket(mapleSession, payload);
 
-            _serverRecv = new MapleCrypto(handshakePacket.RIV, version);
-            _serverSend = new MapleCrypto(handshakePacket.RIV, version);
-            _clientRecv = new MapleCrypto(handshakePacket.SIV, version);
-            _clientSend = new MapleCrypto(handshakePacket.SIV, version);
+            _serverDecryptor = new MapleCrypto(handshakePacket.RIV, version);
+            _clientDecryptor = new MapleCrypto(handshakePacket.SIV, version);
+            _serverEncryptor = new MapleCrypto(handshakePacket.RIV, version);
+            _clientEncryptor = new MapleCrypto(handshakePacket.SIV, version);
 
             SessionSuccess = true;
 
-            _winDivertSender.ReplaceAndSend(args.Packet, payload, args.Address, isIncoming: true);
+            _winDivertSender.ReplaceAndSend(args.Packet, payload, args.Address);
 
             return handshakePacket;
         }

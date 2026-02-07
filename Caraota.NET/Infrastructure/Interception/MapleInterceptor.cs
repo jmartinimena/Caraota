@@ -1,24 +1,24 @@
 ﻿using System.Runtime;
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
+
 using Caraota.NET.Engine.Logic;
 using Caraota.NET.Engine.Session;
 using Caraota.NET.Engine.Monitoring;
-using Caraota.NET.Common.Performance;
-using Caraota.NET.Common.Events;
+
 using Caraota.NET.Common.Utils;
+using Caraota.NET.Common.Events;
+using Caraota.NET.Common.Performance;
 
 namespace Caraota.NET.Infrastructure.Interception
 {
-    public class MapleInterceptor : IDisposable
+    public sealed class MapleInterceptor : IDisposable
     {
-        public delegate Task MapleInterceptorAsyncEventDelegate<T>(T packet);
-        public event MapleInterceptorAsyncEventDelegate<Exception>? ErrorOcurred;
-        public event MapleInterceptorAsyncEventDelegate<HandshakeEventArgs>? HandshakeReceived;
+        public event Func<Exception, Task>? ErrorOcurred;
+        public event Func<HandshakeEventArgs, Task>? HandshakeReceived;
 
         public readonly HijackManager HijackManager = new();
         public readonly PacketDispatcher PacketDispatcher = new();
-        public readonly MapleSessionMonitor SessionMonitor = new();
+        public readonly MapleSessionMonitor SessionMonitor = new(); 
 
         private MapleSession? _session;
         private WinDivertWrapper? _wrapper;
@@ -27,6 +27,9 @@ namespace Caraota.NET.Infrastructure.Interception
 
         public void StartListening(int port)
         {
+            if(port <= 0 || port > 65535)
+                throw new ArgumentOutOfRangeException(nameof(port), "Puerto inválido.");
+
             Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.High;
             GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
 
@@ -37,42 +40,20 @@ namespace Caraota.NET.Infrastructure.Interception
 
             _session = new MapleSession(_wrapper);
             _session.PacketDecrypted += OnPacketDecrypted;
-
-            // Algunos servidores mantienen pings constantes mientras que otros no
-            // Se debe buscar una forma diferente de detectar desconexion
-            //SessionMonitor.Start(_session);
-        }
-
-        private void OnError(Exception e)
-        {
-            _ = ErrorOcurred?.Invoke(e);
         }
 
         private void OnPacketReceived(WinDivertPacketEventArgs args)
         {
-            ProcessRawPacket(args);
-        }
+            //_sw.Restart();
 
-        private void ProcessRawPacket(WinDivertPacketEventArgs winDivertPacket)
-        {
-            _sw.Restart();
-
-            SessionMonitor!.LastPacketInterceptedTime = Environment.TickCount64;
-
-            if (!Tcp.TryExtractPayload(winDivertPacket.Packet, out ReadOnlySpan<byte> payload))
-            {
+            if (!TcpHelper.TryExtractPayload(args.Packet,
+                out ReadOnlySpan<byte> payload))
                 return;
-            }
 
-            if (!HandleSessionState(winDivertPacket, payload))
-            {
+            if (!HandleSessionState(args, payload))
                 return;
-            }
 
-            _session!.Decrypt(winDivertPacket, payload);
-
-            double ns = _sw.Elapsed.TotalNanoseconds;
-            LogDiagnostic(ns);
+            _session!.Decrypt(args, payload);
         }
 
         private void OnPacketDecrypted(MapleSessionPacket args)
@@ -82,13 +63,20 @@ namespace Caraota.NET.Infrastructure.Interception
             var maplePacket = Pools.MaplePackets.Get();
             maplePacket.Initialize(args.DecodedPacket);
 
-            PacketDispatcher.Enqueue(new MaplePacketEventArgs(maplePacket, args.Hijacked));
+            PacketDispatcher.Dispatch(new MaplePacketEventArgs(maplePacket, args.Hijacked));
 
             if (!_session!.ProcessLeftovers(args))
-                _session!.EncryptAndSend(args);
+                _session.EncryptAndSend(args);
+
+            //double ns = _sw.Elapsed.TotalNanoseconds;
+            //LogDiagnostic(ns);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void OnError(Exception e)
+        {
+            _ = ErrorOcurred?.Invoke(e);
+        }
+
         private bool HandleSessionState(WinDivertPacketEventArgs winDivertPacket, ReadOnlySpan<byte> payload)
         {
             if (!_session!.IsInitialized())
