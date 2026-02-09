@@ -46,6 +46,8 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
             payload.CopyTo(newPayload[start.Length..]);
 
             payload = newPayload;
+
+            start = Array.Empty<byte>();
         }
 
         var decryptor = _sessionManager.GetDecryptor(args.IsIncoming);
