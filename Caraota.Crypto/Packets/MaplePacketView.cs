@@ -85,15 +85,6 @@ namespace Caraota.Crypto.Packets
             // LOG DE DIAGNÓSTICO PROFUNDO
             // Debug.WriteLine($"[MaplePacketView] Id: {Id} | Opcode: {Opcode:X4} | Size: {payloadLength} | Incoming: {IsIncoming}");
         }
-
-        public static MaplePacketView Concat(MaplePacketView leftover, Span<byte> payload)
-        {
-            Span<byte> combined = new byte[leftover.Data.Length + payload.Length];
-            leftover.Data.CopyTo(combined);
-            payload.CopyTo(combined.Slice(leftover.Data.Length, payload.Length));
-
-            return new MaplePacketView(combined, leftover.IV, leftover.IsIncoming, leftover.Id, leftover.ParentReaded);
-        }
     }
 }
     
