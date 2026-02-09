@@ -14,10 +14,8 @@ namespace Caraota.NET.Infrastructure.Interception
 {
     internal sealed class WinDivertWrapper : IWinDivertSender, IDisposable
     {
-        public delegate void PacketEventHandler(WinDivertPacketEventArgs args);
-
         public event Action<Exception>? Error;
-        public event PacketEventHandler? PacketReceived;
+        public event Action<WinDivertPacketViewEventArgs>? PacketReceived;
 
         private bool _isRunning;
         private Thread? _captureThread;
@@ -100,7 +98,7 @@ namespace Caraota.NET.Infrastructure.Interception
 
         private void ProcessOutboundPacket(WinDivertBuffer buffer, WinDivertAddress address, uint len)
         {
-            PacketReceived!.Invoke(new WinDivertPacketEventArgs(buffer.AsSpan(len), address, false));
+            PacketReceived!.Invoke(new WinDivertPacketViewEventArgs(buffer.AsSpan(len), address, false));
         }
 
         private uint _lastInboundSeq = 0;
@@ -118,7 +116,7 @@ namespace Caraota.NET.Infrastructure.Interception
 
             _lastInboundSeq = currentSeq;
 
-            PacketReceived!.Invoke(new WinDivertPacketEventArgs(span, address, true));
+            PacketReceived!.Invoke(new WinDivertPacketViewEventArgs(span, address, true));
         }
 
         private void HandleWinDivertError()
@@ -141,16 +139,13 @@ namespace Caraota.NET.Infrastructure.Interception
         }
 
         private readonly WinDivertBuffer _sendBuffer = new();
-        public void SendPacket(ReadOnlySpan<byte> packet, WinDivertAddress address, bool log = false)
+        public void SendPacket(ReadOnlySpan<byte> packet, WinDivertAddress address)
         {
             if (packet.Length <= 0) return;
 
             packet.CopyToWinDivertBuffer(_sendBuffer, packet.Length);
 
             WinDivert.WinDivertHelperCalcChecksums(_sendBuffer, (uint)packet.Length, ref address, WinDivertChecksumHelperParam.All);
-
-            if (log)
-                Debug.WriteLine($"Construido: {Convert.ToHexString(_sendBuffer.AsSpan((uint)packet.Length))}");
 
             if (!WinDivert.WinDivertSend(_handle, _sendBuffer, (uint)packet.Length, ref address))
                 ThrowLastWin32Error();
@@ -249,7 +244,6 @@ namespace Caraota.NET.Infrastructure.Interception
 
     internal static class WinDivertFactory
     {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static WinDivertWrapper CreateForPort(int port, bool outbound = true, bool inbound = true)
         {
             string filter;

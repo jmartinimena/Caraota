@@ -10,15 +10,15 @@ namespace Caraota.NET.Engine.Logic
 
         private static readonly byte[] HijackPattern = [.. "3A68696A61636B" // :hijack
             .Chunk(2).Select(s => Convert.ToByte(new string(s), 16))];
-        internal void ProcessQueue(ref MapleSessionPacket args)
+        internal void ProcessQueue(ref MapleSessionViewEventArgs args)
         {
-            var hijackQueue = args.DecodedPacket.IsIncoming ? _inHijackQueue : _outHijackQueue;
+            var hijackQueue = args.MaplePacketView.IsIncoming ? _inHijackQueue : _outHijackQueue;
             if (hijackQueue.Count == 0) return;
 
-            if (args.DecodedPacket.Opcode == (args.DecodedPacket.IsIncoming ? 122 : 46) &&
-                args.DecodedPacket.Data.IndexOf(HijackPattern) != -1)
+            if (args.MaplePacketView.Opcode == (args.MaplePacketView.IsIncoming ? 122 : 46) &&
+                args.MaplePacketView.Data.IndexOf(HijackPattern) != -1)
             {
-                args.DecodedPacket = PacketFactory.Parse(hijackQueue.Dequeue());
+                args.MaplePacketView = PacketFactory.Parse(hijackQueue.Dequeue());
                 args.Hijacked = true;
             }
         }

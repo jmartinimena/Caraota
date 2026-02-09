@@ -20,17 +20,6 @@ namespace Caraota.Crypto.Packets
             }
         }
 
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ushort GetOpcode(ReadOnlySpan<byte> payload)
-        {
-            return payload.Length >= 2
-                ? BinaryPrimitives.ReadUInt16LittleEndian(payload[..2])
-                : (ushort)0;
-        }
-
-        private static readonly byte[] _headerBuffer = new byte[4];
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ReadOnlySpan<byte> GetHeader(ReadOnlySpan<byte> iv, int length, bool isIncoming)
         {
@@ -40,7 +29,7 @@ namespace Caraota.Crypto.Packets
 
             int b = a ^ length;
 
-            Span<byte> header = _headerBuffer;
+            Span<byte> header = new byte[4];
 
             BinaryPrimitives.WriteUInt16LittleEndian(header[..2], (ushort)a);
             BinaryPrimitives.WriteUInt16LittleEndian(header[2..], (ushort)b);

@@ -1,5 +1,6 @@
-﻿using Caraota.NET.Engine.Session;
-using System.Diagnostics;
+﻿using System.Diagnostics;
+
+using Caraota.NET.Engine.Session;
 
 namespace Caraota.NET.Engine.Monitoring
 {
@@ -11,11 +12,11 @@ namespace Caraota.NET.Engine.Monitoring
 
         public long LastPacketInterceptedTime;
 
-        private MapleSession? _session;
+        private ISessionState? _session;
 
         private CancellationTokenSource? _cts;
 
-        public void Start(MapleSession session)
+        public void Start(ISessionState session)
         {
             _session = session;
 
@@ -35,7 +36,7 @@ namespace Caraota.NET.Engine.Monitoring
                 {
                     await Task.Delay(500, _cts.Token);
 
-                    if (_session == null || !_session.IsInitialized())
+                    if (_session == null || !_session.Success)
                         continue;
 
                     long idleTime = Environment.TickCount64 - LastPacketInterceptedTime;
@@ -49,7 +50,7 @@ namespace Caraota.NET.Engine.Monitoring
                             await Disconnected.Invoke();
                         }
 
-                        _session.Reset();
+                        // TODO: Manejar la desconexion
                         break;
                     }
                 }
@@ -71,7 +72,6 @@ namespace Caraota.NET.Engine.Monitoring
             _cts?.Cancel();
             _cts?.Dispose();
             _cts = null;
-            _session = null;
         }
     }
 }

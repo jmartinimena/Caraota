@@ -18,7 +18,7 @@ namespace Caraota.NET.Infrastructure.Interception
 
         public readonly HijackManager HijackManager = new();
         public readonly PacketDispatcher PacketDispatcher = new();
-        public readonly MapleSessionMonitor SessionMonitor = new(); 
+        public readonly MapleSessionMonitor SessionMonitor = new();
 
         private MapleSession? _session;
         private WinDivertWrapper? _wrapper;
@@ -27,7 +27,7 @@ namespace Caraota.NET.Infrastructure.Interception
 
         public void StartListening(int port)
         {
-            if(port <= 0 || port > 65535)
+            if (port <= 0 || port > 65535)
                 throw new ArgumentOutOfRangeException(nameof(port), "Puerto inválido.");
 
             Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.High;
@@ -44,7 +44,7 @@ namespace Caraota.NET.Infrastructure.Interception
             SessionMonitor.Start(_session);
         }
 
-        private void OnHandshakeInit(WinDivertPacketEventArgs args)
+        private void OnHandshakeInit(WinDivertPacketViewEventArgs args)
         {
             SessionMonitor.LastPacketInterceptedTime = Environment.TickCount;
 
@@ -56,7 +56,7 @@ namespace Caraota.NET.Infrastructure.Interception
                 return;
         }
 
-        private void OnPacketReceived(WinDivertPacketEventArgs args)
+        private void OnPacketReceived(WinDivertPacketViewEventArgs args)
         {
             _sw.Restart();
 
@@ -66,15 +66,15 @@ namespace Caraota.NET.Infrastructure.Interception
                 out Span<byte> payload))
                 return;
 
-            _session!.Decrypt(args, payload);
+            _session!.ProcessPacket(args, payload);
         }
 
-        private void OnPacketDecrypted(MapleSessionPacket args)
+        private void OnPacketDecrypted(MapleSessionViewEventArgs args)
         {
             HijackManager.ProcessQueue(ref args);
 
             var maplePacket = Pools.MaplePackets.Get();
-            maplePacket.Initialize(args.DecodedPacket);
+            maplePacket.Initialize(args.MaplePacketView);
 
             PacketDispatcher.Dispatch(new MaplePacketEventArgs(maplePacket, args.Hijacked));
 
@@ -90,9 +90,9 @@ namespace Caraota.NET.Infrastructure.Interception
             _ = ErrorOcurred?.Invoke(e);
         }
 
-        private bool HandleSessionState(WinDivertPacketEventArgs winDivertPacket, ReadOnlySpan<byte> payload)
+        private bool HandleSessionState(WinDivertPacketViewEventArgs winDivertPacket, ReadOnlySpan<byte> payload)
         {
-            if (!_session!.IsInitialized())
+            if (!_session!.Success)
             {
                 var handshakeArgs = _session.Initialize(winDivertPacket, payload);
 
@@ -108,7 +108,7 @@ namespace Caraota.NET.Infrastructure.Interception
         }
 
         [Conditional("DEBUG")]
-        private static void LogDiagnostic(double nanoseconds) 
+        private static void LogDiagnostic(double nanoseconds)
             => Debug.WriteLine($"[Interceptor] Cycle: {nanoseconds} ns");
 
         public void Dispose()

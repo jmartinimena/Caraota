@@ -33,6 +33,8 @@ namespace Caraota.Crypto.Packets
 
         /// <summary> Offset acumulado de lectura en caso de paquetes reensamblados o recursivos. </summary>
         public int ParentReaded { get; set; }
+        public readonly bool RequiresContinuation { get; init; }
+
 
         /// <summary> Longitud total de la ventana de datos actual (Header + Payload + Leftovers). </summary>
         public readonly int TotalLength => Header.Length + Payload.Length + Leftovers.Length;
@@ -57,10 +59,14 @@ namespace Caraota.Crypto.Packets
             // Extraer longitud del payload desde el header (primeros 4 bytes)
             ReadOnlySpan<byte> header = data[..4];
             int payloadLength = PacketUtils.GetLength(header);
+            header = PacketUtils.GetHeader(iv, payloadLength, isIncoming);
 
             // Seguridad: Evitar OutOfMemory si el header reporta más de lo que hay en el buffer actual
             if (payloadLength > data.Length - 4)
+            {
+                RequiresContinuation = true;
                 payloadLength = data.Length - 4;
+            }
 
             int totalProcessed = payloadLength + 4;
 
@@ -78,6 +84,15 @@ namespace Caraota.Crypto.Packets
 
             // LOG DE DIAGNÓSTICO PROFUNDO
             // Debug.WriteLine($"[MaplePacketView] Id: {Id} | Opcode: {Opcode:X4} | Size: {payloadLength} | Incoming: {IsIncoming}");
+        }
+
+        public static MaplePacketView Concat(MaplePacketView leftover, Span<byte> payload)
+        {
+            Span<byte> combined = new byte[leftover.Data.Length + payload.Length];
+            leftover.Data.CopyTo(combined);
+            payload.CopyTo(combined.Slice(leftover.Data.Length, payload.Length));
+
+            return new MaplePacketView(combined, leftover.IV, leftover.IsIncoming, leftover.Id, leftover.ParentReaded);
         }
     }
 }

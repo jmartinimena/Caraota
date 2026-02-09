@@ -8,7 +8,7 @@ namespace Caraota.NET.Common.Events
 {
     public readonly ref struct HandshakeSessionPacket
     {
-        public MapleSessionPacket MapleSessionEventArgs { get; }
+        public MapleSessionViewEventArgs MapleSessionEventArgs { get; }
         public ReadOnlySpan<byte> Packet { get; }
         public ReadOnlySpan<byte> Payload { get; }
         public readonly ushort Opcode { get; }
@@ -17,7 +17,7 @@ namespace Caraota.NET.Common.Events
         public ReadOnlySpan<byte> RIV { get; }
         public readonly byte Locale { get; }
 
-        public HandshakeSessionPacket(MapleSessionPacket mapleSessionEventArgs, ReadOnlySpan<byte> packet)
+        public HandshakeSessionPacket(MapleSessionViewEventArgs mapleSessionEventArgs, ReadOnlySpan<byte> packet)
         {
             MapleSessionEventArgs = mapleSessionEventArgs;
             Packet = packet;
