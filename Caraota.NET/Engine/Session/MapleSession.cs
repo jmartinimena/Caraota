@@ -24,30 +24,30 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
     public HandshakeSessionPacket Initialize(WinDivertPacketViewEventArgs winDivertPacket, ReadOnlySpan<byte> payload)
         => _sessionManager.Initialize(winDivertPacket, payload);
 
-    private Memory<byte> inStart = Array.Empty<byte>();
-    private Memory<byte> outStart = Array.Empty<byte>();
+    private byte[] inStart = [];
+    private byte[] outStart = [];
     public void ProcessPacket(WinDivertPacketViewEventArgs args, Span<byte> payload, long? parentId = null, int? parentReaded = null)
     {
-        var start = args.IsIncoming ? inStart : outStart;
+        ref byte[] start = ref GetStartRef(args.IsIncoming);
 
         // Si no tenemos suficiente para un header guardamos y salimos
-        if(start.Length == 0 && payload.Length < 4)
+        if (start.Length == 0 && payload.Length < 4)
         {
             start = new byte[payload.Length];
-            payload.CopyTo(start.Span);
+            payload.CopyTo(start);
             return;
         }
 
         // Si tenemos algo guardado lo ponemos al comienzo de nuestro payload y continuamos
-        if(start.Length > 0)
+        if (start.Length > 0)
         {
             Span<byte> newPayload = new byte[start.Length + payload.Length];
-            start.Span.CopyTo(newPayload);
+            start.CopyTo(newPayload);
             payload.CopyTo(newPayload[start.Length..]);
 
             payload = newPayload;
 
-            start = Array.Empty<byte>();
+            start = [];
         }
 
         var decryptor = _sessionManager.GetDecryptor(args.IsIncoming);
@@ -57,14 +57,19 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
         if (packet.RequiresContinuation)
         {
             start = new byte[packet.Data.Length];
-            packet.Data.CopyTo(start.Span);
+            packet.Data.CopyTo(start);
+            return;
         }
-        else // Si no es el caso continuamos el flujo normal
-        {
-            decryptor.Decrypt(ref packet);
-            PacketDecrypted?.Invoke(new MapleSessionViewEventArgs(args, packet));
-            DecryptLeftover(args, packet);
-        }
+
+        decryptor.Decrypt(ref packet);
+        PacketDecrypted?.Invoke(new MapleSessionViewEventArgs(args, packet));
+        DecryptLeftover(args, packet);
+    }
+
+    private ref byte[] GetStartRef(bool isIncoming)
+    {
+        if (isIncoming) return ref inStart;
+        return ref outStart;
     }
 
     public void EncryptAndSend(MapleSessionViewEventArgs args)

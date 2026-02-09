@@ -81,10 +81,6 @@ namespace Caraota.Crypto.Packets
             Payload = data.Slice(4, payloadLength);
             Data = data[..totalProcessed];
             Leftovers = data[totalProcessed..];
-
-            // LOG DE DIAGNÓSTICO PROFUNDO
-            // Debug.WriteLine($"[MaplePacketView] Id: {Id} | Opcode: {Opcode:X4} | Size: {payloadLength} | Incoming: {IsIncoming}");
         }
     }
 }
-    
