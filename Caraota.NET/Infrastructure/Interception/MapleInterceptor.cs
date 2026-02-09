@@ -66,6 +66,9 @@ namespace Caraota.NET.Infrastructure.Interception
                 out Span<byte> payload))
                 return;
 
+            if (payload.Length == 0)
+                return;
+
             _session!.ProcessPacket(args, payload);
         }
 

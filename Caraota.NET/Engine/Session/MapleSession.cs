@@ -30,6 +30,15 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
     {
         var start = args.IsIncoming ? inStart : outStart;
 
+        // Si no tenemos suficiente para un header guardamos y salimos
+        if(start.Length == 0 && payload.Length < 4)
+        {
+            start = new byte[payload.Length];
+            payload.CopyTo(start.Span);
+            return;
+        }
+
+        // Si tenemos algo guardado lo ponemos al comienzo de nuestro payload y continuamos
         if(start.Length > 0)
         {
             Span<byte> newPayload = new byte[start.Length + payload.Length];
@@ -42,12 +51,13 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
         var decryptor = _sessionManager.GetDecryptor(args.IsIncoming);
         var packet = PacketFactory.Parse(payload, decryptor.IV.Span, args.IsIncoming, parentId, parentReaded);
 
+        // Si el length del header reporta un tamano mayor del que nos viene en el payload, requiere continuacion
         if (packet.RequiresContinuation)
         {
             start = new byte[packet.Data.Length];
             packet.Data.CopyTo(start.Span);
         }
-        else
+        else // Si no es el caso continuamos el flujo normal
         {
             decryptor.Decrypt(ref packet);
             PacketDecrypted?.Invoke(new MapleSessionViewEventArgs(args, packet));
