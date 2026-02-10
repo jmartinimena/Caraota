@@ -101,7 +101,7 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
 
     private void DecryptLeftover(WinDivertPacketViewEventArgs args, MaplePacketView parentPacket)
     {
-        if (parentPacket.Leftovers.IsEmpty) return;
+        if (parentPacket.Leftovers.Length == 0) return;
 
         int newOffset = parentPacket.ParentReaded + parentPacket.Header.Length + parentPacket.Payload.Length;
         ProcessPacket(args, parentPacket.Leftovers, parentPacket.Id, newOffset);

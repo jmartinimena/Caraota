@@ -6,6 +6,6 @@ namespace Caraota.NET.Infrastructure.Interception
     {
         void SendPacket(ReadOnlySpan<byte> packet, WinDivertAddress address);
 
-        void ReplaceAndSend(ReadOnlySpan<byte> original, ReadOnlySpan<byte> payload, WinDivertAddress address);
+        void ReplaceAndSend(Span<byte> original, ReadOnlySpan<byte> payload, WinDivertAddress address);
     }
 }

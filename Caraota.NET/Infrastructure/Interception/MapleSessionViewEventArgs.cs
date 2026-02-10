@@ -9,7 +9,7 @@ namespace Caraota.NET.Infrastructure.Interception
     {
         public bool Hijacked { get; set; }
         public readonly WinDivertAddress Address = args.Address;
-        public readonly ReadOnlySpan<byte> WinDivertPacket = args.Packet;
+        public readonly Span<byte> WinDivertPacket = args.Packet;
         public MaplePacketView MaplePacketView = packet;
     }
 }

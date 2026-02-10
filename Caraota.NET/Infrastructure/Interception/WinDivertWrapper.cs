@@ -137,25 +137,26 @@ namespace Caraota.NET.Infrastructure.Interception
         }
 
         private readonly WinDivertBuffer _sendBuffer = new();
-        public void SendPacket(ReadOnlySpan<byte> packet, WinDivertAddress address)
+        public unsafe void SendPacket(ReadOnlySpan<byte> packet, WinDivertAddress address)
         {
-            if (packet.Length <= 0) return;
-
             address.Impostor = true;
-
-            packet.CopyToWinDivertBuffer(_sendBuffer, packet.Length);
 
             WinDivert.WinDivertHelperCalcChecksums(_sendBuffer, (uint)packet.Length, ref address, WinDivertChecksumHelperParam.All);
 
-            if (!WinDivert.WinDivertSend(_handle, _sendBuffer, (uint)packet.Length, ref address))
-                ThrowLastWin32Error();
+            fixed (byte* ptr = packet)
+            {
+                _sendBuffer.SetBufferPointer((IntPtr)ptr);
+
+                if (!WinDivert.WinDivertSend(_handle, _sendBuffer, (uint)packet.Length, ref address))
+                    ThrowLastWin32Error();
+            }
         }
 
-        public void ReplaceAndSend(ReadOnlySpan<byte> original, ReadOnlySpan<byte> payload, WinDivertAddress address)
+        public void ReplaceAndSend(Span<byte> original, ReadOnlySpan<byte> payload, WinDivertAddress address)
         {
             bool isIncoming = address.Direction == WinDivertDirection.Inbound;
-            var replacement = _tcpStackArchitect.ReplacePayload(original, payload, isIncoming);
-            SendPacket(replacement, address);
+            _tcpStackArchitect.ReplacePayload(original, payload, isIncoming);
+            SendPacket(original, address);
         }
 
         public void Stop()
@@ -180,7 +181,7 @@ namespace Caraota.NET.Infrastructure.Interception
     internal static unsafe class WinDivertBufferExtensions
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe Span<byte> AsSpan(this WinDivertBuffer buffer, uint length)
+        public static Span<byte> AsSpan(this WinDivertBuffer buffer, uint length)
         {
             IntPtr ptr = BufferAccessor.GetPointer(buffer)!;
             return new Span<byte>(ptr.ToPointer(), (int)length);
@@ -193,23 +194,16 @@ namespace Caraota.NET.Infrastructure.Interception
             return new ReadOnlyMemory<byte>(array, 0, (int)length);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-        public static unsafe void CopyToWinDivertBuffer(
-            this ReadOnlySpan<byte> source,
-            WinDivertBuffer destination,
-            int length)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe void SetBufferPointer(this WinDivertBuffer buffer, nint ptr)
         {
-            IntPtr dstPtr = BufferAccessor.GetPointer(destination)!;
-
-            ref byte srcRef = ref MemoryMarshal.GetReference(source);
-            ref byte dstRef = ref *(byte*)dstPtr;
-
-            Unsafe.CopyBlock(ref dstRef, ref srcRef, (uint)length);
+            BufferAccessor.SetBufferPointer(ptr, buffer);
         }
 
         private static class BufferAccessor
         {
             private static readonly Func<WinDivertBuffer, IntPtr> _getPointerFunc;
+            private static readonly Action<WinDivertBuffer, IntPtr> _setPointerFunc;
             private static readonly Func<WinDivertBuffer, byte[]> _getArrayFunc;
 
             static BufferAccessor()
@@ -227,6 +221,11 @@ namespace Caraota.NET.Infrastructure.Interception
                     pointerFieldAccess, bufferParam);
                 _getPointerFunc = pointerLambda.Compile();
 
+                var valueParam = Expression.Parameter(typeof(IntPtr));
+                _setPointerFunc = Expression.Lambda<Action<WinDivertBuffer, IntPtr>>(
+                Expression.Assign(Expression.Field(bufferParam, bufferPointerField), valueParam),
+                bufferParam, valueParam).Compile();
+
                 // Delegate para _buffer (byte[])
                 var arrayFieldAccess = Expression.Field(bufferParam, bufferArrayField);
                 var arrayLambda = Expression.Lambda<Func<WinDivertBuffer, byte[]>>(
@@ -239,6 +238,11 @@ namespace Caraota.NET.Infrastructure.Interception
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static byte[] GetArray(WinDivertBuffer buffer) => _getArrayFunc(buffer);
+
+            public static void SetBufferPointer(IntPtr ptr, WinDivertBuffer buffer)
+            {
+                _setPointerFunc(buffer, ptr);
+            }
         }
     }
 

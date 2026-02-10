@@ -11,7 +11,7 @@ namespace Caraota.Crypto.Packets
     public ref struct MaplePacketView
     {
         /// <summary> Identificador único del paquete basado en el timestamp de alta resolución. </summary>
-        public long Id { get; set; }
+        public long Id { get; init; }
 
         /// <summary> Indica si el paquete proviene del servidor (true) o del cliente (false). </summary>
         public readonly bool IsIncoming { get; init; }
