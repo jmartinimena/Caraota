@@ -9,7 +9,8 @@ namespace Caraota.Crypto.State
     {
         public static ushort Version { get; private set; }
 
-        public Memory<byte> IV { get; } = new byte[4];
+        public byte[] SIV { get; } = new byte[4];
+        public byte[] RIV { get; } = new byte[4];
 
         private static readonly byte[] _shiftTable =
         [
@@ -31,9 +32,11 @@ namespace Caraota.Crypto.State
             0x84, 0x7F, 0x61, 0x1E, 0xCF, 0xC5, 0xD1, 0x56, 0x3D, 0xCA, 0xF4, 0x05, 0xC6, 0xE5, 0x08, 0x49
         ];
 
-        public MapleCrypto(ReadOnlySpan<byte> iv, ushort version)
+        public MapleCrypto(ReadOnlySpan<byte> siv, ReadOnlySpan<byte> riv, ushort version)
         {
-            iv.CopyTo(IV.Span);
+            siv.CopyTo(SIV);
+            riv.CopyTo(RIV);
+
             Version = version;
 
             byte[] key =
@@ -47,50 +50,48 @@ namespace Caraota.Crypto.State
 
         public void Encrypt(ref MaplePacketView packet)
         {
-            var iv = IV.Span;
             var payload = packet.Payload;
+            var iv = packet.IsIncoming ? RIV : SIV;
 
             Shanda.Encrypt(payload);
             AES.EncryptDecrypt(payload, iv);
 
             if (!packet.RequiresContinuation)
-                Update();
+                Update(iv);
         }
 
         public void Decrypt(ref MaplePacketView packet)
         {
-            var iv = IV.Span;
             var payload = packet.Payload;
+            var iv = packet.IsIncoming ? RIV : SIV;
 
             AES.EncryptDecrypt(payload, iv);
             Shanda.Decrypt(payload);
 
             if (!packet.RequiresContinuation)
-                Update();
+                Update(iv);
         }
 
         private static readonly byte[] DefaultSeed = [0xf2, 0x53, 0x50, 0xc6];
-        private void Update()
+        private void Update(Span<byte> iv)
         {
             Span<byte> seed = stackalloc byte[4];
             DefaultSeed.CopyTo(seed);
 
             for (int i = 0; i < 4; i++)
             {
-                Shuffle(IV.Span[i], seed);
+                Shuffle(iv[i], seed);
             }
 
-            seed.CopyTo(IV.Span);
+            seed.CopyTo(iv);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
-        public bool Validate(MaplePacketView packet)
+        public static bool Validate(MaplePacketView packet, ReadOnlySpan<byte> iv)
         {
             if (packet.Header.Length < 4) return false;
 
             int expectedA = packet.IsIncoming ? -(Version + 1) : Version;
-
-            ReadOnlySpan<byte> iv = IV.Span;
 
             bool isValid = (packet.Header[0] ^ iv[2]) == (byte)(expectedA & 0xFF) &&
                            (packet.Header[1] ^ iv[3]) == (byte)((expectedA >> 8) & 0xFF);

@@ -4,8 +4,8 @@ namespace Caraota.Crypto.State
 {
     public interface IMapleEncryptor
     {
-        Memory<byte> IV { get; }
+        public byte[] SIV { get; }
+        public byte[] RIV { get; }
         void Encrypt(ref MaplePacketView packet);
-        bool Validate(MaplePacketView packet);
     }
 }

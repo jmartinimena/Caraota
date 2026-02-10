@@ -38,8 +38,8 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
             payload = payloadBuffer.AsSpan(0, startLen + payload.Length);
         }
 
-        var decryptor = _sessionManager.GetDecryptor(args.IsIncoming);
-        var packet = PacketFactory.Parse(payload, decryptor.IV.Span, args.IsIncoming, parentId, parentReaded);
+        var decryptor = _sessionManager.Decryptor;
+        var packet = PacketFactory.Parse(payload, decryptor.RIV, args.IsIncoming, parentId, parentReaded);
 
         // Si fue reconstruido establecemos la bandera para el invoke
         if(startLen > 0)
@@ -64,9 +64,9 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
 
     public void EncryptAndSend(MapleSessionViewEventArgs args)
     {
-        var decryptor = _sessionManager.GetEncryptor(args.MaplePacketView.IsIncoming);
+        var encryptor = _sessionManager.Encryptor;
         var packet = args.MaplePacketView;
-        decryptor.Encrypt(ref packet);
+        encryptor.Encrypt(ref packet);
 
         var original = args.WinDivertPacket;
         var data = packet.Data;
@@ -83,8 +83,8 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
 
         byte[] outBuffer = _reassembler.GetOrCreateBuffer(packet.Id, packet.TotalLength, packet.IsIncoming);
 
-        var decryptor = _sessionManager.GetEncryptor(args.MaplePacketView.IsIncoming);
-        decryptor.Encrypt(ref packet);
+        var encryptor = _sessionManager.Encryptor;
+        encryptor.Encrypt(ref packet);
         packet.Data.CopyTo(outBuffer.AsSpan(packet.ParentReaded));
 
         if (packet.Leftovers.Length == 0)

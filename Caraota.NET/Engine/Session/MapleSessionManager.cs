@@ -18,21 +18,11 @@ namespace Caraota.NET.Engine.Session
         private const int VERSION_OFFSET = 2;
         private const int VERSION_SIZE = sizeof(ushort);
 
-        private IMapleEncryptor _serverEncryptor = default!;
-        private IMapleEncryptor _clientEncryptor = default!;
-        private IMapleDecryptor _serverDecryptor = default!;
-        private IMapleDecryptor _clientDecryptor = default!;
+        public IMapleDecryptor Decryptor = default!;
+        public IMapleEncryptor Encryptor = default!;
 
         private readonly IWinDivertSender _winDivertSender = winDivertSender;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public IMapleDecryptor GetDecryptor(bool isIncoming)
-        => isIncoming ? _serverDecryptor : _clientDecryptor;
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public IMapleEncryptor GetEncryptor(bool isIncoming)
-        => isIncoming ? _serverEncryptor : _clientEncryptor;
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public HandshakeSessionPacket Initialize(WinDivertPacketViewEventArgs winDivertPacket, ReadOnlySpan<byte> payload)
         {
             if (TryGetVersion(payload, out ushort version))
@@ -43,7 +33,6 @@ namespace Caraota.NET.Engine.Session
             return default;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         private static bool TryGetVersion(ReadOnlySpan<byte> data, out ushort version)
         {
             version = 0;
@@ -68,10 +57,8 @@ namespace Caraota.NET.Engine.Session
             var mapleSession = new MapleSessionViewEventArgs(args, default);
             var handshakePacket = new HandshakeSessionPacket(mapleSession, payload);
 
-            _serverDecryptor = new MapleCrypto(handshakePacket.RIV, version);
-            _clientDecryptor = new MapleCrypto(handshakePacket.SIV, version);
-            _serverEncryptor = new MapleCrypto(handshakePacket.RIV, version);
-            _clientEncryptor = new MapleCrypto(handshakePacket.SIV, version);
+            Encryptor = new MapleCrypto(handshakePacket.SIV, handshakePacket.RIV, version);
+            Decryptor = new MapleCrypto(handshakePacket.SIV, handshakePacket.RIV, version);
 
             Success = true;
 
