@@ -3,46 +3,39 @@ using System.Buffers.Binary;
 
 namespace Caraota.Crypto.Packets
 {
-    public class MaplePacket : IDisposable
+    public readonly struct MaplePacket : IDisposable
     {
-        private long _timestamp;
-        private byte[]? _fullBuffer;
+        private readonly long _timestamp;
+        private readonly byte[]? _fullBuffer;
+        private const int _ivLen = 4;
+        private const int _headerLen = 4;
+        private readonly int _dataLen;
+        private readonly int _payloadLen;
 
-        public int DataLen { get; private set; }
-        public const int IvLen = 4;
-        public const int HeaderLen = 4;
-        public int PayloadLen { get; private set; }
+        public readonly ushort Opcode;
+        public readonly bool IsIncoming;
 
-        public Memory<byte> Data => _fullBuffer.AsMemory(0, DataLen);
-        public ReadOnlyMemory<byte> IV => _fullBuffer.AsMemory(DataLen, IvLen);
-        public ReadOnlyMemory<byte> Header => _fullBuffer.AsMemory(0, HeaderLen);
-        public ReadOnlyMemory<byte> Payload => _fullBuffer.AsMemory(HeaderLen, PayloadLen);
+        public readonly Memory<byte> Data => _fullBuffer.AsMemory(0, _dataLen);
+        public readonly ReadOnlyMemory<byte> IV => _fullBuffer.AsMemory(_dataLen, _ivLen);
+        public readonly ReadOnlyMemory<byte> Header => _fullBuffer.AsMemory(0, _headerLen);
+        public readonly ReadOnlyMemory<byte> Payload => _fullBuffer.AsMemory(_headerLen, _payloadLen);
+        public readonly string IVStr => Convert.ToHexString(IV.Span);
+        public readonly string HeaderStr => Convert.ToHexString(Header.Span);
+        public readonly string PayloadStr => Convert.ToHexString(Payload.Span);
+        public readonly string ToHexString() => Convert.ToHexString(Data.Span);
+        public readonly string FormattedTime => PacketUtils.GetRealTime(_timestamp).ToString("HH:mm:ss:fff");
 
-        public ushort Opcode { get; private set; }
-        public bool IsIncoming { get; private set; }
-
-        public string IVStr => Convert.ToHexString(IV.Span);
-        public string HeaderStr => Convert.ToHexString(Header.Span);
-        public string PayloadStr => Convert.ToHexString(Payload.Span);
-        public string ToHexString() => Convert.ToHexString(Data.Span);
-        public string FormattedTime => PacketUtils.GetRealTime(_timestamp).ToString("HH:mm:ss:fff");
-
-        // Constructor sin parametros para el ObjectPool
-        public MaplePacket() { }
-
-        public MaplePacket(MaplePacketView maplePacket) => Initialize(maplePacket);
-
-        public void Initialize(MaplePacketView maplePacket)
+        public MaplePacket(MaplePacketView maplePacket)
         {
-            DataLen = maplePacket.Data.Length;
-            PayloadLen = maplePacket.Payload.Length;
+            _dataLen = maplePacket.Data.Length;
+            _payloadLen = maplePacket.Payload.Length;
 
-            int totalNeeded = DataLen + IvLen;
+            int totalNeeded = _dataLen + _ivLen;
 
             _fullBuffer = ArrayPool<byte>.Shared.Rent(totalNeeded);
 
-            maplePacket.Data.CopyTo(_fullBuffer.AsSpan(0, DataLen));
-            maplePacket.IV.CopyTo(_fullBuffer.AsSpan(DataLen, IvLen));
+            maplePacket.Data.CopyTo(_fullBuffer.AsSpan(0, _dataLen));
+            maplePacket.IV.CopyTo(_fullBuffer.AsSpan(_dataLen, _ivLen));
 
             IsIncoming = maplePacket.IsIncoming;
             _timestamp = maplePacket.Id;
@@ -50,14 +43,13 @@ namespace Caraota.Crypto.Packets
             Opcode = BinaryPrimitives.ReadUInt16LittleEndian(_fullBuffer.AsSpan(4, 2));
         }
 
-        public string Predict() => PacketUtils.Predict(Payload);
+        public readonly string Predict() => PacketUtils.Predict(Payload);
 
         public void Dispose()
         {
             if (_fullBuffer != null)
             {
                 ArrayPool<byte>.Shared.Return(_fullBuffer);
-                _fullBuffer = null;
             }
 
             GC.SuppressFinalize(this);

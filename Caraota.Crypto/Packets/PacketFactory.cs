@@ -25,8 +25,6 @@
 
         public static MaplePacketView Parse(MaplePacket packet)
         {
-            if (packet.DataLen < 4) return default!;
-
             return new MaplePacketView(
                 packet.Data.Span, 
                 packet.IV.Span, 

@@ -1,10 +1,11 @@
 ﻿using Caraota.Crypto.Packets;
+using Caraota.NET.Infrastructure.Interception;
 
 namespace Caraota.NET.Common.Events
 {
-    public readonly struct MaplePacketEventArgs(MaplePacket packet, bool hijacked)
+    public readonly struct MaplePacketEventArgs(MapleSessionViewEventArgs args)
     {
-        public readonly bool Hijacked  = hijacked;
-        public readonly MaplePacket Packet = packet;
+        public readonly bool Hijacked  = args.Hijacked;
+        public readonly MaplePacket Packet = new(args.MaplePacketView);
     }
 }

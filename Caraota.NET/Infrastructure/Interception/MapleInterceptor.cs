@@ -7,7 +7,6 @@ using Caraota.NET.Engine.Monitoring;
 
 using Caraota.NET.Common.Utils;
 using Caraota.NET.Common.Events;
-using Caraota.NET.Common.Performance;
 
 namespace Caraota.NET.Infrastructure.Interception
 {
@@ -76,11 +75,8 @@ namespace Caraota.NET.Infrastructure.Interception
         {
             HijackManager.ProcessQueue(ref args);
 
-            var maplePacket = Pools.MaplePackets.Get();
-            maplePacket.Initialize(args.MaplePacketView);
-
             if (!args.MaplePacketView.RequiresContinuation)
-                PacketDispatcher.Dispatch(new MaplePacketEventArgs(maplePacket, args.Hijacked));
+                PacketDispatcher.Dispatch(new MaplePacketEventArgs(args));
 
             if (!args.MaplePacketView.Rebuilt
                 && !_session!.ProcessLeftovers(args))
