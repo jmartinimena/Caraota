@@ -30,20 +30,20 @@ namespace Caraota.Crypto.Packets
             _dataLen = maplePacket.Data.Length;
             _payloadLen = maplePacket.Payload.Length;
 
-            int totalNeeded = _dataLen + _ivLen;
+            int totalLen = _dataLen + _ivLen;
 
-            _fullBuffer = ArrayPool<byte>.Shared.Rent(totalNeeded);
-
+            _fullBuffer = ArrayPool<byte>.Shared.Rent(totalLen);
             maplePacket.Data.CopyTo(_fullBuffer.AsSpan(0, _dataLen));
             maplePacket.IV.CopyTo(_fullBuffer.AsSpan(_dataLen, _ivLen));
 
             IsIncoming = maplePacket.IsIncoming;
             _timestamp = maplePacket.Id;
-
-            Opcode = BinaryPrimitives.ReadUInt16LittleEndian(_fullBuffer.AsSpan(4, 2));
+            Opcode = maplePacket.Opcode;
         }
 
         public readonly string Predict() => PacketUtils.Predict(Payload);
+
+        public MaplePacketReader GetReader() => new(this);
 
         public void Dispose()
         {

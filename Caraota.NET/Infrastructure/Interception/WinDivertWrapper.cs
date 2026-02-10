@@ -65,7 +65,7 @@ namespace Caraota.NET.Infrastructure.Interception
             Interop.SetThreadAffinity(4);
 
             WinDivertAddress address = default;
-            WinDivertBuffer buffer = new();
+            using WinDivertBuffer buffer = new();
 
             while (_isRunning)
             {
@@ -80,8 +80,6 @@ namespace Caraota.NET.Infrastructure.Interception
                     break;
                 }
             }
-
-            buffer.Dispose();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

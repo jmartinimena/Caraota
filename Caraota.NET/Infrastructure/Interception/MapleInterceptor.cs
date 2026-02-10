@@ -19,6 +19,9 @@ namespace Caraota.NET.Infrastructure.Interception
         public readonly PacketDispatcher PacketDispatcher = new();
         public readonly MapleSessionMonitor SessionMonitor = new();
 
+        private readonly Dictionary<ushort, Func<MaplePacketEventArgs, Task>> _inHandlers = [];
+        private readonly Dictionary<ushort, Func<MaplePacketEventArgs, Task>> _outHandlers = [];
+
         private MapleSession? _session;
         private WinDivertWrapper? _wrapper;
 
@@ -51,8 +54,7 @@ namespace Caraota.NET.Infrastructure.Interception
                 out Span<byte> payload))
                 return;
 
-            if (!HandleSessionState(args, payload))
-                return;
+            InitializeSession(args, payload);
         }
 
         private void OnPacketReceived(WinDivertPacketViewEventArgs args)
@@ -76,7 +78,14 @@ namespace Caraota.NET.Infrastructure.Interception
             HijackManager.ProcessQueue(ref args);
 
             if (!args.MaplePacketView.RequiresContinuation)
-                PacketDispatcher.Dispatch(new MaplePacketEventArgs(args));
+            {
+                var maplePacketEventArgs = new MaplePacketEventArgs(args);
+                var handlers = args.MaplePacketView.IsIncoming ? _inHandlers : _outHandlers;
+                if (handlers.TryGetValue(args.MaplePacketView.Opcode, out var action))
+                    action?.Invoke(maplePacketEventArgs)!.GetAwaiter().GetResult();
+
+                PacketDispatcher.Dispatch(maplePacketEventArgs);
+            }
 
             if (!args.MaplePacketView.Rebuilt
                 && !_session!.ProcessLeftovers(args))
@@ -86,26 +95,39 @@ namespace Caraota.NET.Infrastructure.Interception
             LogDiagnostic(ns);
         }
 
+        public void OnOutgoing(ushort opcode, Func<MaplePacketEventArgs, Task> action)
+        {
+            _outHandlers.Add(opcode, action);
+        }
+
+        public void RemoveOutgoing(ushort opcode)
+        {
+            _outHandlers.Remove(opcode);
+        }
+
+        public void OnIncoming(ushort opcode, Func<MaplePacketEventArgs, Task> action)
+        {
+            _inHandlers.Add(opcode, action);
+        }
+
+        public void RemoveIncoming(ushort opcode)
+        {
+            _inHandlers.Remove(opcode);
+        }
+
         private void OnError(Exception e)
         {
             _ = ErrorOcurred?.Invoke(e);
         }
 
-        private bool HandleSessionState(WinDivertPacketViewEventArgs winDivertPacket, ReadOnlySpan<byte> payload)
+        private void InitializeSession(WinDivertPacketViewEventArgs winDivertPacket, ReadOnlySpan<byte> payload)
         {
-            if (!_session!.Success)
-            {
-                var handshakeArgs = _session.Initialize(winDivertPacket, payload);
+            var handshakeArgs = _session!.Initialize(winDivertPacket, payload);
 
-                _wrapper!.PacketReceived -= OnHandshakeInit;
-                _wrapper!.PacketReceived += OnPacketReceived;
+            _wrapper!.PacketReceived -= OnHandshakeInit;
+            _wrapper!.PacketReceived += OnPacketReceived;
 
-                HandshakeReceived?.Invoke(new HandshakeEventArgs(handshakeArgs));
-
-                return false;
-            }
-
-            return true;
+            HandshakeReceived?.Invoke(new HandshakeEventArgs(handshakeArgs));
         }
 
         [Conditional("DEBUG")]

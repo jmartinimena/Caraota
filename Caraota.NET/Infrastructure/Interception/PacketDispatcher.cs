@@ -6,9 +6,9 @@ namespace Caraota.NET.Infrastructure.Interception
 {
     public class PacketDispatcher
     {
-        public event MaplePacketEventDelegate? OutgoingReceived;
-        public event MaplePacketEventDelegate? IncomingReceived;
-        public delegate Task MaplePacketEventDelegate(MaplePacketEventArgs packet);
+        public event Func<MaplePacketEventArgs, Task>? OutgoingReceived;
+        public event Func<MaplePacketEventArgs, Task>? IncomingReceived;
+        
 
         private readonly Channel<MaplePacketEventArgs> _channel = Channel.CreateBounded<MaplePacketEventArgs>(new BoundedChannelOptions(10000)
         {
@@ -27,6 +27,8 @@ namespace Caraota.NET.Infrastructure.Interception
             _channel.Writer.TryWrite(packet);
         }
 
+       
+
         private async Task ProcessLogQueueAsync()
         {
             await foreach (var args in _channel.Reader.ReadAllAsync())
@@ -34,9 +36,17 @@ namespace Caraota.NET.Infrastructure.Interception
                 try
                 {
                     if (args.Packet.IsIncoming)
+                    {
                         await IncomingReceived?.Invoke(args)!;
+
+                        
+                    }
                     else
+                    {
                         await OutgoingReceived?.Invoke(args)!;
+
+                        
+                    }
                 }
                 finally
                 {
