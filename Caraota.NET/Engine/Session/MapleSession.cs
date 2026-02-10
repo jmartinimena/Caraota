@@ -33,7 +33,7 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
     public void ProcessPacket(WinDivertPacketViewEventArgs args, Span<byte> payload, long? parentId = null, int? parentReaded = null)
     {
         // Si tenemos algo guardado lo ponemos al comienzo de nuestro payload y continuamos
-        if (startBuffer.Length > 0)
+        if (startLen > 0)
         {
             startBuffer.AsSpan(0, startLen).CopyTo(payloadBuffer);
             payload.CopyTo(payloadBuffer.AsSpan(startLen));
