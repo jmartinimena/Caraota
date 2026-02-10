@@ -20,8 +20,6 @@
             long? parentId = null,
             int? parentReaded = null)
         {
-            if (data.Length < 4) return default!;
-
             return new MaplePacketView(data, iv, isIncoming, parentId, parentReaded);
         }
 

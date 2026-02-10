@@ -3,6 +3,7 @@
 using Caraota.NET.Common.Events;
 using Caraota.NET.Infrastructure.TCP;
 using Caraota.NET.Infrastructure.Interception;
+using System.Diagnostics;
 
 namespace Caraota.NET.Engine.Session;
 
@@ -24,20 +25,10 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
     public HandshakeSessionPacket Initialize(WinDivertPacketViewEventArgs winDivertPacket, ReadOnlySpan<byte> payload)
         => _sessionManager.Initialize(winDivertPacket, payload);
 
-    private byte[] inStart = [];
-    private byte[] outStart = [];
+    // Hay un caso de fragmentacion de paquetes
+    private byte[] start = [];
     public void ProcessPacket(WinDivertPacketViewEventArgs args, Span<byte> payload, long? parentId = null, int? parentReaded = null)
     {
-        ref byte[] start = ref GetStartRef(args.IsIncoming);
-
-        // Si no tenemos suficiente para un header guardamos y salimos
-        if (start.Length == 0 && payload.Length < 4)
-        {
-            start = new byte[payload.Length];
-            payload.CopyTo(start);
-            return;
-        }
-
         // Si tenemos algo guardado lo ponemos al comienzo de nuestro payload y continuamos
         if (start.Length > 0)
         {
@@ -46,30 +37,30 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
             payload.CopyTo(newPayload[start.Length..]);
 
             payload = newPayload;
-
-            start = [];
         }
 
         var decryptor = _sessionManager.GetDecryptor(args.IsIncoming);
         var packet = PacketFactory.Parse(payload, decryptor.IV.Span, args.IsIncoming, parentId, parentReaded);
 
-        // Si el length del header reporta un tamano mayor del que nos viene en el payload, requiere continuacion
+        // Si fue reconstruido establecemos la bandera para el invoke
+        if(start.Length > 0)
+        {
+            packet.Rebuilt = true;
+            start = [];
+        }
+
+        // Mandamos el comienzo para reconstruirse con el siguiente paquete, el dispatcher lo ignorara
+        // solo pasara por el dispatcher cuando el paquete este completo
         if (packet.RequiresContinuation)
         {
             start = new byte[packet.Data.Length];
             packet.Data.CopyTo(start);
-            return;
         }
 
         decryptor.Decrypt(ref packet);
         PacketDecrypted?.Invoke(new MapleSessionViewEventArgs(args, packet));
-        DecryptLeftover(args, packet);
-    }
 
-    private ref byte[] GetStartRef(bool isIncoming)
-    {
-        if (isIncoming) return ref inStart;
-        return ref outStart;
+        DecryptLeftover(args, packet);
     }
 
     public void EncryptAndSend(MapleSessionViewEventArgs args)

@@ -11,7 +11,7 @@ namespace Caraota.Crypto.Packets
     public ref struct MaplePacketView
     {
         /// <summary> Identificador único del paquete basado en el timestamp de alta resolución. </summary>
-        public readonly long Id { get; init; }
+        public long Id { get; set; }
 
         /// <summary> Indica si el paquete proviene del servidor (true) o del cliente (false). </summary>
         public readonly bool IsIncoming { get; init; }
@@ -33,8 +33,8 @@ namespace Caraota.Crypto.Packets
 
         /// <summary> Offset acumulado de lectura en caso de paquetes reensamblados o recursivos. </summary>
         public int ParentReaded { get; set; }
+        public bool Rebuilt { get; set; }
         public readonly bool RequiresContinuation { get; init; }
-
 
         /// <summary> Longitud total de la ventana de datos actual (Header + Payload + Leftovers). </summary>
         public readonly int TotalLength => Header.Length + Payload.Length + Leftovers.Length;

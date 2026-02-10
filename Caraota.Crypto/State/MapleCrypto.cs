@@ -53,7 +53,8 @@ namespace Caraota.Crypto.State
             Shanda.Encrypt(payload);
             AES.EncryptDecrypt(payload, iv);
 
-            Update();
+            if (!packet.RequiresContinuation)
+                Update();
         }
 
         public void Decrypt(ref MaplePacketView packet)
@@ -64,7 +65,8 @@ namespace Caraota.Crypto.State
             AES.EncryptDecrypt(payload, iv);
             Shanda.Decrypt(payload);
 
-            Update();
+            if (!packet.RequiresContinuation)
+                Update();
         }
 
         private static readonly byte[] DefaultSeed = [0xf2, 0x53, 0x50, 0xc6];

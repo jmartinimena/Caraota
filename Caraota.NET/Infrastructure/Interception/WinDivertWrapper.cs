@@ -143,6 +143,8 @@ namespace Caraota.NET.Infrastructure.Interception
         {
             if (packet.Length <= 0) return;
 
+            address.Impostor = true;
+
             packet.CopyToWinDivertBuffer(_sendBuffer, packet.Length);
 
             WinDivert.WinDivertHelperCalcChecksums(_sendBuffer, (uint)packet.Length, ref address, WinDivertChecksumHelperParam.All);

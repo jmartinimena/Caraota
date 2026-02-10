@@ -79,9 +79,11 @@ namespace Caraota.NET.Infrastructure.Interception
             var maplePacket = Pools.MaplePackets.Get();
             maplePacket.Initialize(args.MaplePacketView);
 
-            PacketDispatcher.Dispatch(new MaplePacketEventArgs(maplePacket, args.Hijacked));
+            if (!args.MaplePacketView.RequiresContinuation)
+                PacketDispatcher.Dispatch(new MaplePacketEventArgs(maplePacket, args.Hijacked));
 
-            if (!_session!.ProcessLeftovers(args))
+            if (!args.MaplePacketView.Rebuilt
+                && !_session!.ProcessLeftovers(args))
                 _session.EncryptAndSend(args);
 
             double ns = _sw.Elapsed.TotalNanoseconds;
