@@ -39,7 +39,7 @@ namespace Caraota.Crypto.Packets
 
         public uint ReadUInt(int? position = 0)
         {
-            int pos = UpdatePosition<int>(position);
+            int pos = UpdatePosition<uint>(position);
             return BinaryPrimitives.ReadUInt32LittleEndian(_payload[pos..]);
         }
 

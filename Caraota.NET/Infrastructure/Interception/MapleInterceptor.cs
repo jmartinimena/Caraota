@@ -15,12 +15,10 @@ namespace Caraota.NET.Infrastructure.Interception
         public event Func<Exception, Task>? ErrorOcurred;
         public event Func<HandshakeEventArgs, Task>? HandshakeReceived;
 
+        public readonly PacketSide Outgoing = new();
+        public readonly PacketSide Incoming = new();
         public readonly HijackManager HijackManager = new();
-        public readonly PacketDispatcher PacketDispatcher = new();
         public readonly MapleSessionMonitor SessionMonitor = new();
-
-        private readonly Dictionary<ushort, Func<MaplePacketEventArgs, Task>> _inHandlers = [];
-        private readonly Dictionary<ushort, Func<MaplePacketEventArgs, Task>> _outHandlers = [];
 
         private MapleSession? _session;
         private WinDivertWrapper? _wrapper;
@@ -36,8 +34,8 @@ namespace Caraota.NET.Infrastructure.Interception
             GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
 
             _wrapper = WinDivertFactory.CreateForTcpPort(port);
+            _wrapper.Error += (e) => ErrorOcurred?.Invoke(e);
             _wrapper.PacketReceived += OnHandshakeInit;
-            _wrapper.Error += OnError;
             _wrapper.Start();
 
             _session = new MapleSession(_wrapper);
@@ -75,16 +73,16 @@ namespace Caraota.NET.Infrastructure.Interception
 
         private void OnPacketDecrypted(MapleSessionViewEventArgs args)
         {
-            HijackManager.ProcessQueue(ref args);
-
             if (!args.MaplePacketView.RequiresContinuation)
             {
-                var maplePacketEventArgs = new MaplePacketEventArgs(args);
-                var handlers = args.MaplePacketView.IsIncoming ? _inHandlers : _outHandlers;
-                if (handlers.TryGetValue(args.MaplePacketView.Opcode, out var action))
-                    action?.Invoke(maplePacketEventArgs)!.GetAwaiter().GetResult();
+                HijackManager.ProcessQueue(ref args);
 
-                PacketDispatcher.Dispatch(maplePacketEventArgs);
+                var maplePacketEventArgs = new MaplePacketEventArgs(args);
+                var packetSide = args.MaplePacketView.IsIncoming ? Incoming : Outgoing;
+                if (packetSide.TryGetFunc(args.MaplePacketView.Opcode, out var func))
+                    func?.Invoke(maplePacketEventArgs).GetAwaiter().GetResult();
+
+                packetSide.Dispatch(maplePacketEventArgs);
             }
 
             if (!args.MaplePacketView.Rebuilt
@@ -93,31 +91,6 @@ namespace Caraota.NET.Infrastructure.Interception
 
             double ns = _sw.Elapsed.TotalNanoseconds;
             LogDiagnostic(ns);
-        }
-
-        public void OnOutgoing(ushort opcode, Func<MaplePacketEventArgs, Task> action)
-        {
-            _outHandlers.Add(opcode, action);
-        }
-
-        public void RemoveOutgoing(ushort opcode)
-        {
-            _outHandlers.Remove(opcode);
-        }
-
-        public void OnIncoming(ushort opcode, Func<MaplePacketEventArgs, Task> action)
-        {
-            _inHandlers.Add(opcode, action);
-        }
-
-        public void RemoveIncoming(ushort opcode)
-        {
-            _inHandlers.Remove(opcode);
-        }
-
-        private void OnError(Exception e)
-        {
-            _ = ErrorOcurred?.Invoke(e);
         }
 
         private void InitializeSession(WinDivertPacketViewEventArgs winDivertPacket, ReadOnlySpan<byte> payload)
