@@ -39,7 +39,8 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
         }
 
         var decryptor = _sessionManager.Decryptor;
-        var packet = PacketFactory.Parse(payload, decryptor.RIV, args.IsIncoming, parentId, parentReaded);
+        var iv = args.IsIncoming ? decryptor.RIV : decryptor.SIV;
+        var packet = PacketFactory.Parse(payload, iv, args.IsIncoming, parentId, parentReaded);
 
         // Si fue reconstruido establecemos la bandera para el invoke
         if(startLen > 0)
