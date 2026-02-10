@@ -51,13 +51,13 @@ namespace Caraota.Crypto.Packets
 
         public ulong ReadULong(int? position = 0)
         {
-            int pos = UpdatePosition<int>(position);
+            int pos = UpdatePosition<ulong>(position);
             return BinaryPrimitives.ReadUInt64LittleEndian(_payload[pos..]);
         }
 
         public long ReadLong(int? position = 0)
         {
-            int pos = UpdatePosition<int>(position);
+            int pos = UpdatePosition<long>(position);
             return BinaryPrimitives.ReadInt64LittleEndian(_payload[pos..]);
         }
 
