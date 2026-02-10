@@ -26,8 +26,8 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
 
     // Hay un caso de fragmentacion de paquetes
     private int startLen = 0;
-    private byte[] startBuffer = new byte[4096];
-    private byte[] payloadBuffer = new byte[32000];
+    private readonly byte[] startBuffer = new byte[4096];
+    private readonly byte[] payloadBuffer = new byte[32000];
     public void ProcessPacket(WinDivertPacketViewEventArgs args, Span<byte> payload, long? parentId = null, int? parentReaded = null)
     {
         // Si tenemos algo guardado lo ponemos al comienzo de nuestro payload y continuamos

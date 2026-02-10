@@ -1,14 +1,15 @@
-﻿using Caraota.NET.Common.Events;
-using Caraota.NET.Common.Utils;
-using Caraota.NET.Infrastructure.TCP;
+﻿using System.Reflection;
 using System.Buffers.Binary;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Linq.Expressions;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+
 using WinDivertSharp;
+
+using Caraota.NET.Common.Utils;
+using Caraota.NET.Common.Events;
+using Caraota.NET.Infrastructure.TCP;
 
 namespace Caraota.NET.Infrastructure.Interception
 {
@@ -100,21 +101,27 @@ namespace Caraota.NET.Infrastructure.Interception
         }
 
         private uint _lastInboundSeq = 0;
-        private void ProcessInboundPacket(WinDivertBuffer buffer, WinDivertAddress address, uint len)
+        private unsafe void ProcessInboundPacket(WinDivertBuffer buffer, WinDivertAddress address, uint len)
         {
-            var span = buffer.AsSpan(len);
-            int ipH = (span[0] & 0x0F) << 2;
-            uint currentSeq = BinaryPrimitives.ReadUInt32BigEndian(span.Slice(ipH + 4, 4));
+            byte* pBase = (byte*)buffer.GetPointer();
+
+            int ipH = (*pBase & 0x0F) << 2;
+
+            uint* pSeq = (uint*)(pBase + ipH + 4);
+            uint currentSeq = BinaryPrimitives.ReverseEndianness(*pSeq);
 
             if (currentSeq == _lastInboundSeq)
             {
-                SendPacket(span, address);
+                SendPacket(new ReadOnlySpan<byte>(pBase, (int)len), address);
                 return;
             }
 
             _lastInboundSeq = currentSeq;
 
-            PacketReceived!.Invoke(new WinDivertPacketViewEventArgs(span, address, true));
+            PacketReceived?.Invoke(new WinDivertPacketViewEventArgs(
+                new Span<byte>(pBase, (int)len),
+                address,
+                true));
         }
 
         private void HandleWinDivertError()
@@ -165,6 +172,7 @@ namespace Caraota.NET.Infrastructure.Interception
 
             if (_handle != IntPtr.Zero)
             {
+                _sendBuffer.Dispose();
                 WinDivert.WinDivertClose(_handle);
             }
 
@@ -200,6 +208,12 @@ namespace Caraota.NET.Infrastructure.Interception
             BufferAccessor.SetBufferPointer(ptr, buffer);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static nint GetPointer(this WinDivertBuffer buffer)
+        {
+            return BufferAccessor.GetPointer(buffer);
+        }
+
         private static class BufferAccessor
         {
             private static readonly Func<WinDivertBuffer, IntPtr> _getPointerFunc;
@@ -226,7 +240,6 @@ namespace Caraota.NET.Infrastructure.Interception
                 Expression.Assign(Expression.Field(bufferParam, bufferPointerField), valueParam),
                 bufferParam, valueParam).Compile();
 
-                // Delegate para _buffer (byte[])
                 var arrayFieldAccess = Expression.Field(bufferParam, bufferArrayField);
                 var arrayLambda = Expression.Lambda<Func<WinDivertBuffer, byte[]>>(
                     arrayFieldAccess, bufferParam);

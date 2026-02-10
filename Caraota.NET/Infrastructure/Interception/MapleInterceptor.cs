@@ -30,8 +30,9 @@ namespace Caraota.NET.Infrastructure.Interception
             if (port <= 0 || port > 65535)
                 throw new ArgumentOutOfRangeException(nameof(port), "Puerto inválido.");
 
-            Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.RealTime;
             GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
+            var currentProcess = Process.GetCurrentProcess();
+            currentProcess.PriorityClass = ProcessPriorityClass.RealTime;
 
             _wrapper = WinDivertFactory.CreateForTcpPort(port);
             _wrapper.Error += (e) => ErrorOcurred?.Invoke(e);
@@ -46,7 +47,7 @@ namespace Caraota.NET.Infrastructure.Interception
 
         private void OnHandshakeInit(WinDivertPacketViewEventArgs args)
         {
-            SessionMonitor.LastPacketInterceptedTime = Environment.TickCount;
+            SessionMonitor.LastPacketInterceptedTime = Stopwatch.GetTimestamp();
 
             if (!TcpHelper.TryExtractPayload(args.Packet,
                 out Span<byte> payload))
@@ -59,13 +60,10 @@ namespace Caraota.NET.Infrastructure.Interception
         {
             _sw.Restart();
 
-            SessionMonitor.LastPacketInterceptedTime = Environment.TickCount;
+            SessionMonitor.LastPacketInterceptedTime = Stopwatch.GetTimestamp();
 
             if (!TcpHelper.TryExtractPayload(args.Packet,
                 out Span<byte> payload))
-                return;
-
-            if (payload.Length == 0)
                 return;
 
             _session!.ProcessPacket(args, payload);
