@@ -191,7 +191,7 @@ namespace Caraota.NET.Infrastructure.Interception
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Span<byte> AsSpan(this WinDivertBuffer buffer, uint length)
         {
-            IntPtr ptr = BufferAccessor.GetPointer(buffer)!;
+            IntPtr ptr = BufferAccessor.GetPointer(buffer);
             return new Span<byte>(ptr.ToPointer(), (int)length);
         }
 

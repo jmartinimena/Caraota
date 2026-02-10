@@ -5,18 +5,26 @@ namespace Caraota.NET.Common.Utils
     public static class TcpHelper
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool TryExtractPayload(Span<byte> tcpPacket, out Span<byte> payload)
+        public static unsafe bool TryExtractPayload(Span<byte> tcpPacket, out Span<byte> payload)
         {
-            int ipH = (tcpPacket[0] & 0x0F) << 2;
-            int tcpH = ((tcpPacket[ipH + 12] & 0xF0) >> 4) << 2;
+            fixed (byte* pBase = tcpPacket)
+            {
+                int ipH = (*pBase & 0x0F) << 2;
 
-            int offset = ipH + tcpH;
-            int len = tcpPacket.Length - offset;
+                int tcpH = ((*(pBase + ipH + 12) & 0xF0) >> 4) << 2;
 
-            if (len <= 0) { payload = default; return false; }
+                int offset = ipH + tcpH;
+                int len = tcpPacket.Length - offset;
 
-            payload = tcpPacket.Slice(offset, len);
-            return true;
+                if (len <= 0)
+                {
+                    payload = default;
+                    return false;
+                }
+
+                payload = new Span<byte>(pBase + offset, len);
+                return true;
+            }
         }
     }
 }
