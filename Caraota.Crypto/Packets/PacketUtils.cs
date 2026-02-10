@@ -21,6 +21,15 @@ namespace Caraota.Crypto.Packets
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public unsafe static int GetLength(byte* ptr)
+        {
+            ushort versionMask = Unsafe.ReadUnaligned<ushort>(ptr);
+            ushort lengthMask = Unsafe.ReadUnaligned<ushort>(ptr + 2);
+
+            return versionMask ^ lengthMask;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ReadOnlySpan<byte> GetHeader(ReadOnlySpan<byte> iv, int length, bool isIncoming)
         {
             int a = (iv[3] << 8) | iv[2];

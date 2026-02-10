@@ -6,9 +6,9 @@ namespace Caraota.NET.Infrastructure.Interception
 {
     public sealed class PacketSide
     {
-        public event Func<MaplePacketEventArgs, Task>? Received;
+        public event Action<MaplePacketEventArgs>? Received;
 
-        private readonly Dictionary<ushort, Func<MaplePacketEventArgs, Task>> _handlers = [];
+        private readonly Dictionary<ushort, Action<MaplePacketEventArgs>> _handlers = [];
         private readonly Channel<MaplePacketEventArgs> _channel = Channel.CreateBounded<MaplePacketEventArgs>(new BoundedChannelOptions(10000)
         {
             FullMode = BoundedChannelFullMode.DropOldest,
@@ -27,7 +27,7 @@ namespace Caraota.NET.Infrastructure.Interception
             {
                 try
                 {
-                    await Received?.Invoke(args)!;
+                    Received?.Invoke(args);
                 }
                 finally
                 {
@@ -41,9 +41,9 @@ namespace Caraota.NET.Infrastructure.Interception
             _channel.Writer.TryWrite(packet);
         }
 
-        public bool Register(ushort opcode, Func<MaplePacketEventArgs, Task> func)
+        public bool Register(ushort opcode, Action<MaplePacketEventArgs> action)
         {
-            return _handlers.TryAdd(opcode, func);
+            return _handlers.TryAdd(opcode, action);
         }
 
         public bool Unregister(ushort opcode)
@@ -51,9 +51,9 @@ namespace Caraota.NET.Infrastructure.Interception
             return _handlers.Remove(opcode);
         }
 
-        internal bool TryGetFunc(ushort opcode, out Func<MaplePacketEventArgs, Task> func)
+        internal bool TryGetFunc(ushort opcode, out Action<MaplePacketEventArgs> action)
         {
-            return _handlers.TryGetValue(opcode, out func!);
+            return _handlers.TryGetValue(opcode, out action!);
         }
     }
 }

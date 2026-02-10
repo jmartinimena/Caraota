@@ -12,16 +12,16 @@ namespace Caraota.NET.Infrastructure.Interception
 {
     public sealed class MapleInterceptor : IDisposable
     {
-        public event Func<Exception, Task>? ErrorOcurred;
-        public event Func<HandshakeEventArgs, Task>? HandshakeReceived;
+        public event Action<Exception>? ErrorOcurred;
+        public event Action<HandshakeEventArgs>? HandshakeReceived;
 
         public readonly PacketSide Outgoing = new();
         public readonly PacketSide Incoming = new();
         public readonly HijackManager HijackManager = new();
         public readonly MapleSessionMonitor SessionMonitor = new();
 
-        private MapleSession? _session;
-        private WinDivertWrapper? _wrapper;
+        private MapleSession _session = default!;
+        private WinDivertWrapper _wrapper = default!;
 
         private readonly Stopwatch _sw = new();
 
@@ -50,8 +50,7 @@ namespace Caraota.NET.Infrastructure.Interception
             SessionMonitor.LastPacketInterceptedTime = Stopwatch.GetTimestamp();
 
             if (!TcpHelper.TryExtractPayload(args.Packet,
-                out Span<byte> payload))
-                return;
+                out Span<byte> payload)) return;
 
             InitializeSession(args, payload);
         }
@@ -63,10 +62,9 @@ namespace Caraota.NET.Infrastructure.Interception
             SessionMonitor.LastPacketInterceptedTime = Stopwatch.GetTimestamp();
 
             if (!TcpHelper.TryExtractPayload(args.Packet,
-                out Span<byte> payload))
-                return;
+                out Span<byte> payload)) return;
 
-            _session!.ProcessPacket(args, payload);
+            _session.ProcessRaw(args, payload);
         }
 
         private void OnPacketDecrypted(MapleSessionViewEventArgs args)
@@ -77,15 +75,15 @@ namespace Caraota.NET.Infrastructure.Interception
 
                 var maplePacketEventArgs = new MaplePacketEventArgs(args);
                 var packetSide = args.MaplePacketView.IsIncoming ? Incoming : Outgoing;
+
                 if (packetSide.TryGetFunc(args.MaplePacketView.Opcode, out var func))
-                    func?.Invoke(maplePacketEventArgs).GetAwaiter().GetResult();
+                    func?.Invoke(maplePacketEventArgs);
 
                 packetSide.Dispatch(maplePacketEventArgs);
             }
 
-            if (!args.MaplePacketView.Rebuilt
-                && !_session!.ProcessLeftovers(args))
-                _session.EncryptAndSend(args);
+            if (!args.MaplePacketView.Rebuilt)
+                _session.ProcessDecrypted(args);
 
             double ns = _sw.Elapsed.TotalNanoseconds;
             LogDiagnostic(ns);
@@ -93,10 +91,10 @@ namespace Caraota.NET.Infrastructure.Interception
 
         private void InitializeSession(WinDivertPacketViewEventArgs winDivertPacket, ReadOnlySpan<byte> payload)
         {
-            var handshakeArgs = _session!.Initialize(winDivertPacket, payload);
+            var handshakeArgs = _session.Initialize(winDivertPacket, payload);
 
-            _wrapper!.PacketReceived -= OnHandshakeInit;
-            _wrapper!.PacketReceived += OnPacketReceived;
+            _wrapper.PacketReceived -= OnHandshakeInit;
+            _wrapper.PacketReceived += OnPacketReceived;
 
             HandshakeReceived?.Invoke(new HandshakeEventArgs(handshakeArgs));
         }
@@ -107,7 +105,7 @@ namespace Caraota.NET.Infrastructure.Interception
 
         public void Dispose()
         {
-            _wrapper?.Dispose();
+            _wrapper.Dispose();
             GC.SuppressFinalize(this);
         }
     }

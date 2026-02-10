@@ -1,5 +1,4 @@
 ﻿using System.Buffers;
-using System.Buffers.Binary;
 
 namespace Caraota.Crypto.Packets
 {
@@ -25,20 +24,33 @@ namespace Caraota.Crypto.Packets
         public readonly string ToHexString() => Convert.ToHexString(Data.Span);
         public readonly string FormattedTime => PacketUtils.GetRealTime(_timestamp).ToString("HH:mm:ss:fff");
 
-        public MaplePacket(MaplePacketView maplePacket)
+        public unsafe MaplePacket(MaplePacketView maplePacket)
         {
+            _timestamp = maplePacket.Id;
             _dataLen = maplePacket.Data.Length;
             _payloadLen = maplePacket.Payload.Length;
 
-            int totalLen = _dataLen + _ivLen;
-
-            _fullBuffer = ArrayPool<byte>.Shared.Rent(totalLen);
-            maplePacket.Data.CopyTo(_fullBuffer.AsSpan(0, _dataLen));
-            maplePacket.IV.CopyTo(_fullBuffer.AsSpan(_dataLen, _ivLen));
-
-            IsIncoming = maplePacket.IsIncoming;
-            _timestamp = maplePacket.Id;
             Opcode = maplePacket.Opcode;
+            IsIncoming = maplePacket.IsIncoming;
+
+            int totalLen = _dataLen + _ivLen;
+            _fullBuffer = ArrayPool<byte>.Shared.Rent(totalLen);
+
+            var srcData = maplePacket.Data;
+            var srcIV = maplePacket.IV;
+
+            fixed (byte* pDest = _fullBuffer)
+            {
+                fixed (byte* pSrcData = srcData)
+                {
+                    Buffer.MemoryCopy(pSrcData, pDest, _dataLen, _dataLen);
+                }
+
+                fixed (byte* pSrcIV = srcIV)
+                {
+                    Buffer.MemoryCopy(pSrcIV, pDest + _dataLen, _ivLen, _ivLen);
+                }
+            }
         }
 
         public readonly string Predict() => PacketUtils.Predict(Payload);

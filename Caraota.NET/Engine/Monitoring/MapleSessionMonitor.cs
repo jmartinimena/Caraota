@@ -6,9 +6,7 @@ namespace Caraota.NET.Engine.Monitoring
 {
     public class MapleSessionMonitor
     {
-        public event DisconnectedEventDelegate? Disconnected;
-
-        public delegate Task DisconnectedEventDelegate();
+        public event Action? Disconnected;
 
         public long LastPacketInterceptedTime;
 
@@ -47,7 +45,7 @@ namespace Caraota.NET.Engine.Monitoring
 
                         if (Disconnected != null)
                         {
-                            await Disconnected.Invoke();
+                            Disconnected.Invoke();
                         }
 
                         // TODO: Manejar la desconexion

@@ -148,11 +148,15 @@ namespace Caraota.NET.Infrastructure.Interception
         {
             address.Impostor = true;
 
-            WinDivert.WinDivertHelperCalcChecksums(_sendBuffer, (uint)packet.Length, ref address, WinDivertChecksumHelperParam.All);
+            WinDivert.WinDivertHelperCalcChecksums(
+                    _sendBuffer,
+                    (uint)packet.Length,
+                    ref address,
+                    WinDivertChecksumHelperParam.All);
 
             fixed (byte* ptr = packet)
             {
-                _sendBuffer.SetBufferPointer((IntPtr)ptr);
+                _sendBuffer.SetPointer((IntPtr)ptr);
 
                 if (!WinDivert.WinDivertSend(_handle, _sendBuffer, (uint)packet.Length, ref address))
                     ThrowLastWin32Error();
@@ -203,7 +207,7 @@ namespace Caraota.NET.Infrastructure.Interception
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe void SetBufferPointer(this WinDivertBuffer buffer, nint ptr)
+        public static unsafe void SetPointer(this WinDivertBuffer buffer, nint ptr)
         {
             BufferAccessor.SetBufferPointer(ptr, buffer);
         }

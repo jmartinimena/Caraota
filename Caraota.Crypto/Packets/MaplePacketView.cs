@@ -16,8 +16,6 @@ namespace Caraota.Crypto.Packets
         /// <summary> Indica si el paquete proviene del servidor (true) o del cliente (false). </summary>
         public readonly bool IsIncoming { get; init; }
 
-        /// <summary> Vista del Vector de Inicialización (IV) utilizado para este paquete específico. </summary>
-        public ReadOnlySpan<byte> IV { get; init; }
 
         /// <summary> Vista completa del paquete (Header + Payload) sin incluir leftovers. </summary>
         public ReadOnlySpan<byte> Data { get; init; }
@@ -25,6 +23,8 @@ namespace Caraota.Crypto.Packets
         /// <summary> Vista de los 4 bytes del header cifrado de MapleStory. </summary>
         public ReadOnlySpan<byte> Header { get; init; }
 
+        /// <summary> Vista del Vector de Inicialización (IV) utilizado para este paquete específico. </summary>
+        public Span<byte> IV { get; init; } = new byte[4];
         /// <summary> Segmento mutable que contiene el contenido del paquete. Se modifica directamente durante el cifrado/descifrado. </summary>
         public Span<byte> Payload { get; init; }
 
@@ -50,34 +50,40 @@ namespace Caraota.Crypto.Packets
         /// <param name="isIncoming">Dirección del flujo de red.</param>
         /// <param name="parentId">ID del paquete padre en caso de fragmentación.</param>
         /// <param name="parentReaded">Offset de lectura heredado.</param>
-        public MaplePacketView(Span<byte> data, ReadOnlySpan<byte> iv, bool isIncoming, long? parentId = null, int? parentReaded = null)
+        public unsafe MaplePacketView(Span<byte> data, ReadOnlySpan<byte> iv, bool isIncoming, long? parentId = null, int? parentReaded = null)
         {
             Id = parentId ?? Stopwatch.GetTimestamp();
             ParentReaded = parentReaded ?? 0;
             IsIncoming = isIncoming;
 
-            // Extraer longitud del payload desde el header (primeros 4 bytes)
-            ReadOnlySpan<byte> header = data[..4];
-            int payloadLength = PacketUtils.GetLength(header);
-            header = PacketUtils.GetHeader(iv, payloadLength, isIncoming);
+            int dataLength = data.Length;
+            int payloadLength = 0;
 
-            // Seguridad: Evitar OutOfMemory si el header reporta más de lo que hay en el buffer actual
-            if (payloadLength > data.Length - 4)
+            fixed (byte* pData = data)
             {
-                RequiresContinuation = true;
-                payloadLength = data.Length - 4;
+                payloadLength = PacketUtils.GetLength(pData);
+
+                if (payloadLength > dataLength - 4)
+                {
+                    RequiresContinuation = true;
+                    payloadLength = dataLength - 4;
+                }
+                else
+                {
+                    RequiresContinuation = false;
+                }
             }
+
+            fixed (byte* pSrcIv = iv)
+            fixed (byte* pDestIv = IV)
+            {
+                *(uint*)pDestIv = *(uint*)pSrcIv;
+            }
+
+            Header = PacketUtils.GetHeader(iv, payloadLength, isIncoming);
 
             int totalProcessed = payloadLength + 4;
 
-            // No podemos escapar de este caso, como el IV rota justo despues del descifrado
-            // Debemos alocarlo para no perder el IV que descifro el paquete, duele, pero igual es un costo menor
-            Span<byte> bufferIv = new byte[iv.Length];
-            iv.CopyTo(bufferIv);
-
-            // Asignación de vistas (Spans) sobre el mismo segmento de memoria original
-            IV = bufferIv;
-            Header = header;
             Payload = data.Slice(4, payloadLength);
             Data = data[..totalProcessed];
             Leftovers = data[totalProcessed..];
