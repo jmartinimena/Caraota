@@ -30,7 +30,7 @@ namespace Caraota.NET.Infrastructure.Interception
             if (port <= 0 || port > 65535)
                 throw new ArgumentOutOfRangeException(nameof(port), "Puerto inválido.");
 
-            Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.High;
+            Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.RealTime;
             GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
 
             _wrapper = WinDivertFactory.CreateForTcpPort(port);

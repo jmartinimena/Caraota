@@ -4,6 +4,7 @@ using Caraota.NET.Common.Events;
 using Caraota.NET.Infrastructure.TCP;
 using Caraota.NET.Infrastructure.Interception;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace Caraota.NET.Engine.Session;
 
@@ -26,35 +27,35 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
         => _sessionManager.Initialize(winDivertPacket, payload);
 
     // Hay un caso de fragmentacion de paquetes
-    private byte[] start = [];
+    private int startLen = 0;
+    private byte[] startBuffer = new byte[4096];
+    private byte[] payloadBuffer = new byte[32000];
     public void ProcessPacket(WinDivertPacketViewEventArgs args, Span<byte> payload, long? parentId = null, int? parentReaded = null)
     {
         // Si tenemos algo guardado lo ponemos al comienzo de nuestro payload y continuamos
-        if (start.Length > 0)
+        if (startBuffer.Length > 0)
         {
-            Span<byte> newPayload = new byte[start.Length + payload.Length];
-            start.CopyTo(newPayload);
-            payload.CopyTo(newPayload[start.Length..]);
-
-            payload = newPayload;
+            startBuffer.AsSpan(0, startLen).CopyTo(payloadBuffer);
+            payload.CopyTo(payloadBuffer.AsSpan(startLen));
+            payload = payloadBuffer.AsSpan(0, startLen + payload.Length);
         }
 
         var decryptor = _sessionManager.GetDecryptor(args.IsIncoming);
         var packet = PacketFactory.Parse(payload, decryptor.IV.Span, args.IsIncoming, parentId, parentReaded);
 
         // Si fue reconstruido establecemos la bandera para el invoke
-        if(start.Length > 0)
+        if(startLen > 0)
         {
             packet.Rebuilt = true;
-            start = [];
+            startLen = 0;
         }
 
         // Mandamos el comienzo para reconstruirse con el siguiente paquete, el dispatcher lo ignorara
         // solo pasara por el dispatcher cuando el paquete este completo
         if (packet.RequiresContinuation)
         {
-            start = new byte[packet.Data.Length];
-            packet.Data.CopyTo(start);
+            packet.Data.CopyTo(startBuffer);
+            startLen = packet.Data.Length;
         }
 
         decryptor.Decrypt(ref packet);
