@@ -29,6 +29,7 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
     public HandshakeSessionPacket Initialize(WinDivertPacketViewEventArgs winDivertPacket, ReadOnlySpan<byte> payload)
         => _sessionManager.Initialize(winDivertPacket, payload);
 
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     public unsafe void ProcessRaw(WinDivertPacketViewEventArgs args, Span<byte> payload, long? parentId = null, int? parentReaded = null)
     {
         if (startLen > 0)
@@ -57,7 +58,9 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
 
         if (packet.RequiresContinuation)
         {
-            fixed(byte* pStart = startBuffer)
+            startLen = packet.Data.Length;
+
+            fixed (byte* pStart = startBuffer)
             fixed(byte* pData = packet.Data)
             {
                 Buffer.MemoryCopy(pData, pStart, startBuffer.Length, startLen);

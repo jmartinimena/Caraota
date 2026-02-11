@@ -80,10 +80,9 @@ namespace Caraota.Crypto.Packets
                 *(uint*)pDestIv = *(uint*)pSrcIv;
             }
 
-            Header = PacketUtils.GetHeader(iv, payloadLength, isIncoming);
-
             int totalProcessed = payloadLength + 4;
 
+            Header = data[..4];
             Payload = data.Slice(4, payloadLength);
             Data = data[..totalProcessed];
             Leftovers = data[totalProcessed..];
