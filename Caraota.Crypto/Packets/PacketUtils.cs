@@ -1,8 +1,5 @@
 ﻿using System.Diagnostics;
-using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
-
-using Caraota.Crypto.State;
 
 namespace Caraota.Crypto.Packets
 {
@@ -29,21 +26,24 @@ namespace Caraota.Crypto.Packets
             return versionMask ^ lengthMask;
         }
 
+        private static byte[] _headerBuffer = new byte[4];
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ReadOnlySpan<byte> GetHeader(ReadOnlySpan<byte> iv, int length, bool isIncoming)
+        public unsafe static ReadOnlySpan<byte> GetHeader(ReadOnlySpan<byte> iv, int length, bool isIncoming, ushort version)
         {
             int a = (iv[3] << 8) | iv[2];
 
-            a ^= isIncoming ? -(MapleCrypto.Version + 1) : MapleCrypto.Version;
+            a ^= isIncoming ? -(version + 1) : version;
 
             int b = a ^ length;
 
-            Span<byte> header = new byte[4];
+            fixed (byte* headerPtr = _headerBuffer)
+            {
+                Unsafe.WriteUnaligned(headerPtr, (ushort)a);
+                Unsafe.WriteUnaligned(headerPtr + 2, (ushort)b);
+            }
 
-            BinaryPrimitives.WriteUInt16LittleEndian(header[..2], (ushort)a);
-            BinaryPrimitives.WriteUInt16LittleEndian(header[2..], (ushort)b);
-
-            return header;
+            return _headerBuffer;
         }
 
         public static string Predict(MaplePacketView packet)

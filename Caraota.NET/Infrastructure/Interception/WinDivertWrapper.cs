@@ -167,6 +167,12 @@ namespace Caraota.NET.Infrastructure.Interception
         {
             bool isIncoming = address.Direction == WinDivertDirection.Inbound;
             _tcpStackArchitect.ReplacePayload(original, payload, isIncoming);
+
+            if (payload.Length > 1000)
+            {
+               
+            }
+
             SendPacket(original, address);
         }
 

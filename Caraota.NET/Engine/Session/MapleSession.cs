@@ -43,7 +43,6 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
             }
 
             payload = payloadBuffer.AsSpan(0, startLen + payload.Length);
-            startLen = 0;
         }
 
         var decryptor = _sessionManager.Decryptor;
@@ -52,7 +51,7 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
 
         if(startLen > 0)
         {
-            packet.Rebuilt = true;
+            packet.ContinuationLength = startLen;
             startLen = 0;
         }
 
@@ -122,6 +121,6 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
         var address = args.Address;
 
         _sessionManager.Encryptor.Encrypt(ref packet);
-        _winDivertSender.ReplaceAndSend(original, packet.Data, address);
+        _winDivertSender.ReplaceAndSend(original, packet.Data.Slice(packet.ContinuationLength), address);
     }
 }

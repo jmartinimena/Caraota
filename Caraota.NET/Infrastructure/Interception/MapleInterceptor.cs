@@ -64,26 +64,25 @@ namespace Caraota.NET.Infrastructure.Interception
             if (!TcpHelper.TryExtractPayload(args.Packet,
                 out Span<byte> payload)) return;
 
+            Console.WriteLine($"Original: {Convert.ToHexString(args.Packet)}");
+
             _session.ProcessRaw(args, payload);
         }
 
         private void OnPacketDecrypted(MapleSessionViewEventArgs args)
         {
+            HijackManager.ProcessQueue(ref args);
+
+            var maplePacketEventArgs = new MaplePacketEventArgs(args);
+            var packetSide = args.MaplePacketView.IsIncoming ? Incoming : Outgoing;
+
+            if (packetSide.TryGetFunc(args.MaplePacketView.Opcode, out var func))
+                func?.Invoke(maplePacketEventArgs);
+
             if (!args.MaplePacketView.RequiresContinuation)
-            {
-                HijackManager.ProcessQueue(ref args);
-
-                var maplePacketEventArgs = new MaplePacketEventArgs(args);
-                var packetSide = args.MaplePacketView.IsIncoming ? Incoming : Outgoing;
-
-                if (packetSide.TryGetFunc(args.MaplePacketView.Opcode, out var func))
-                    func?.Invoke(maplePacketEventArgs);
-
                 packetSide.Dispatch(maplePacketEventArgs);
-            }
 
-            if (!args.MaplePacketView.Rebuilt)
-                _session.ProcessDecrypted(args);
+            _session.ProcessDecrypted(args);
 
             double ns = _sw.Elapsed.TotalNanoseconds;
             LogDiagnostic(ns);

@@ -16,9 +16,8 @@ namespace Caraota.Crypto.Packets
         /// <summary> Indica si el paquete proviene del servidor (true) o del cliente (false). </summary>
         public readonly bool IsIncoming { get; init; }
 
-
         /// <summary> Vista completa del paquete (Header + Payload) sin incluir leftovers. </summary>
-        public ReadOnlySpan<byte> Data { get; init; }
+        public Span<byte> Data { get; set; }
 
         /// <summary> Vista de los 4 bytes del header cifrado de MapleStory. </summary>
         public ReadOnlySpan<byte> Header { get; init; }
@@ -33,7 +32,7 @@ namespace Caraota.Crypto.Packets
 
         /// <summary> Offset acumulado de lectura en caso de paquetes reensamblados o recursivos. </summary>
         public int ParentReaded { get; set; }
-        public bool Rebuilt { get; set; }
+        public int ContinuationLength { get; set; }
         public readonly bool RequiresContinuation { get; init; }
 
         /// <summary> Longitud total de la ventana de datos actual (Header + Payload + Leftovers). </summary>
@@ -67,10 +66,6 @@ namespace Caraota.Crypto.Packets
                 {
                     RequiresContinuation = true;
                     payloadLength = dataLength - 4;
-                }
-                else
-                {
-                    RequiresContinuation = false;
                 }
             }
 
