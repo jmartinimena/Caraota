@@ -14,72 +14,59 @@
 
 </div>
 
-**Ultra-High-Performance Packet Interceptor & Logger for MapleStory v62**
+# **Caraota: Ultra-High-Performance Packet Interceptor & Logger for MapleStory v62**
 
-Caraota es un motor de interceptación de red diseñado para la investigación de protocolos en servidores privados de MapleStory (específicamente v62). Caraota está optimizado para procesar paquetes en la escala de **nanosegundos**, garantizando una latencia casi nula y una estabilidad total del vector de inicialización (IV).
+**Caraota** is a network interception engine purpose-built for protocol research on MapleStory private servers (specifically v62). Optimized for **nanosecond-scale** packet processing, Caraota ensures near-zero latency and absolute stability of the Initialization Vector (IV).
 
+[Check out the Wiki](https://github.com/jmartinimena/Caraota/wiki) for examples.
 ---
 
-## 🚀 Benchmarks de Rendimiento
+## 🚀 Performance Benchmarks
 
-He llevado el rendimiento al límite técnico de C# y .NET 10, reduciendo el tiempo de procesamiento por paquete (recibir>descifrar>cifrar>enviar) de **1,000,000 ns** a solo **~70,000 ns** (0.07 ms).
+I have pushed C# and .NET 10 to their technical limits, reducing the per-packet processing time (receive > decrypt > encrypt > send) from **1,000,000 ns** to just **~70,000 ns** (0.07 ms).
 
-Pruebas realizadas en un Ryzen 5 5600X 3.7GHz, 32 GB DDR4 3600MT/s
-| Componente | Optimización | Impacto |
+*Tests performed on: Ryzen 5 5600X 3.7GHz, 32 GB DDR4 3600MT/s*
+
+| Component | Optimization | Impact |
 | :--- | :--- | :--- |
-| **Criptografía** | Bitwise & Local Registers | ~2,500 ns |
-| **Gestión de Memoria** | Zero-Allocation (ArrayPool) | 0 B Garbage |
-| **Validación de IV** | Double-Buffer Logic | Estabilidad total |
-| **Pipeline Global** | **Ultra-Low Latency** | **~70,000 ns** |
+| **Cryptography** | Bitwise & Local Registers | ~2,500 ns |
+| **Memory Management** | Zero-Allocation (ArrayPool) | 0 B Garbage |
+| **IV Validation** | Double-Buffer Logic | Total Stability |
+| **Global Pipeline** | **Ultra-Low Latency** | **~70,000 ns** |
 
 ---
 
-## 🛠️ Características Principales
+## 🛠️ Key Features
 
-### 1. Interceptación y MITM (Man-In-The-Middle)
-Caraota.NET utiliza **WinDivert** para operar a nivel de Kernel, permitiendo no solo observar, sino interceptar y modificar el tráfico en tiempo real.
-* **Packet Hijacking**: Modifica payloads (cambio de items, mensajes de chat, coordenadas) antes de que lleguen al destino.
-* **Drop & Inject**: Descarta paquetes legítimos e inyecta secuencias personalizadas sin desincronizar la sesión TCP.
-* **Auto-Checksum Correction**: Recalcula automáticamente los checksums de IP y TCP tras cualquier modificación del payload.
+### 1. Interception & MITM (Man-In-The-Middle)
+Caraota leverages **WinDivert** to operate at the Kernel level, allowing not just observation, but real-time interception and modification of network traffic.
+* **Packet Hijacking**: Modify payloads (item swaps, chat messages, coordinates) before they reach their destination.
+* **Drop & Inject**: Discard legitimate packets and inject custom sequences without desynchronizing the TCP session.
+* **Auto-Checksum Correction**: Automatically recalculates IP and TCP checksums following any payload modification.
 
+### 2. Zero-Allocation Engineering
+The engine is architected to bypass the Garbage Collector (GC) in the "Hot Path":
+* **Spans & Memory**: Buffer processing via `ReadOnlySpan<byte>` to avoid costly copies (`.ToArray()`).
+* **Stackalloc**: IV update seeds are managed on the Stack, eliminating Heap pressure.
+* **ArrayPool Integration**: Efficient buffer reuse for high-intensity network traffic.
 
-
-### 2. Ingeniería de "Zero-Allocation"
-El motor está diseñado para evitar el Garbage Collector (GC) en el "Hot Path":
-* **Uso de Spans & Memory**: Procesamiento de buffers mediante `ReadOnlySpan<byte>` para evitar copias costosas (`.ToArray()`).
-* **Stackalloc**: Las semillas de actualización de IV se gestionan en el Stack, eliminando la presión sobre el Heap.
-* **ArrayPool Integration**: Reutilización de buffers para el tráfico de red de alta intensidad.
-
-### 3. Criptografía Avanzada v62
-Implementación nativa y optimizada del protocolo de MapleStory:
-* **Custom Shanda**: Rediseñado con rotación de bits (`ROL`) y carga en registros locales para máxima velocidad.
-* **Fast Header Generation**: Generación de cabeceras mediante `BinaryPrimitives` y operaciones bitwise, eliminando divisiones y módulos lentos.
+### 3. Advanced v62 Cryptography
+Native and optimized implementation of the MapleStory protocol:
+* **Custom Shanda**: Redesigned with bit rotation (`ROL`) and local register loading for maximum throughput.
+* **Fast Header Generation**: Header generation using `BinaryPrimitives` and bitwise operations, eliminating slow division and modulo operations.
 
 ---
 
-## 🔧 Requisitos e Instalación
+## 🔧 Requirements & Installation
 
-1.  **.NET 10** o superior.
-2.  **WinDivert**: Asegúrate de que `WinDivert.dll` y `WinDivert64.sys` estén presentes en el directorio de ejecución.
-3.  **Privilegios de Administrador**: Necesarios para que el driver de WinDivert pueda abrir el handle del stack de red.
+1.  **.NET 10** or higher.
+2.  **WinDivert**: Ensure `WinDivert.dll` and `WinDivert64.sys` are present in the execution directory.
+3.  **Administrator Privileges**: Required for the WinDivert driver to open a handle to the network stack.
 
 ```bash
-# Clonar el repositorio
+# Clone the repository
 git clone [https://github.com/jmartinimena/Caraota.git](https://github.com/jmartinimena/Caraota.git)
 
-# Compilar en modo Release para máximo rendimiento
+# Build in Release mode for maximum performance
 dotnet build -c Release
 ```
-
-## ⚠️ Descargo de Responsabilidad (Disclaimer)
-
-**POR FAVOR, LEA ESTO ATENTAMENTE ANTES DE UTILIZAR EL SOFTWARE.**
-
-Este software, **Caraota**, se proporciona exclusivamente con fines **educativos, de investigación y de auditoría de seguridad de redes**. Al utilizar esta herramienta, usted acepta los siguientes términos:
-
-1. **Uso Bajo su Propio Riesgo**: El autor de este software no se hace responsable de ningún daño, pérdida de datos, baneo de cuentas o consecuencias legales que resulten del uso de esta herramienta. El usuario asume toda la responsabilidad por las acciones realizadas con el software.
-2. **Cumplimiento de Términos de Servicio**: El uso de herramientas de interceptación y manipulación de paquetes (MITM/Hijacking) puede violar los Términos de Servicio (ToS) de proveedores de juegos, servidores y servicios de red. El autor no fomenta ni respalda el uso de Caraota.NET para actividades que infrinjan acuerdos de licencia.
-3. **Sin Garantías**: El software se distribuye "TAL CUAL" (AS IS), sin garantías de ningún tipo, expresas o implícitas, incluyendo, pero no limitado a, garantías de funcionamiento o idoneidad para un propósito específico.
-4. **Finalidad Ética**: Esta herramienta fue diseñada para ayudar a desarrolladores y entusiastas de la ciberseguridad a comprender mejor el protocolo de red de MapleStory v62 y la arquitectura de red de alto rendimiento en .NET. No está destinada a ser utilizada para el beneficio desleal, robo de datos o interrupción de servicios de terceros.
-
-**Si no está de acuerdo con estos términos, no haga uso del software.**
