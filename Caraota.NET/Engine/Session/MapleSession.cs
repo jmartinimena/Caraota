@@ -27,8 +27,8 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
 
     public bool Success => _sessionManager.Success;
 
-    public HandshakePacket Initialize(WinDivertPacketViewEventArgs winDivertPacket, ReadOnlySpan<byte> payload)
-        => _sessionManager.Initialize(winDivertPacket, payload);
+    public bool Initialize(WinDivertPacketViewEventArgs winDivertPacket, ReadOnlySpan<byte> payload, out HandshakePacketView handshakePacketView)
+        => _sessionManager.Initialize(winDivertPacket, payload, out handshakePacketView);
 
     [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     public unsafe void ProcessRaw(WinDivertPacketViewEventArgs args, Span<byte> payload, long? parentId = null, int? parentReaded = null)
@@ -45,10 +45,11 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
         var iv = args.IsIncoming ? decryptor.RIV : decryptor.SIV;
         var packet = PacketFactory.Parse(payload, iv, args.IsIncoming, parentId, parentReaded);
 
-        if (packet.Opcode == 0) //Handshake
+        if (packet.Opcode == 0)
         {
-            var handshakePacket = Initialize(args, payload);
-            HandshakeReceived?.Invoke(new HandshakeEventArgs(handshakePacket));
+            if (Initialize(args, payload, out var handshakePacketView))
+                HandshakeReceived?.Invoke(new HandshakeEventArgs(handshakePacketView));
+
             return;
         }
 

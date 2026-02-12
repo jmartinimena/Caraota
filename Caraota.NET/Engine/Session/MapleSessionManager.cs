@@ -1,5 +1,4 @@
 ﻿using System.Buffers.Binary;
-using System.Runtime.CompilerServices;
 
 using Caraota.Crypto.State;
 
@@ -11,7 +10,6 @@ namespace Caraota.NET.Engine.Session
     public class MapleSessionManager(IWinDivertSender winDivertSender)
     {
         public bool Success { get; set; }
-        public ushort HandshakeOp { get; set; }
 
         private const int MAX_VERSION = 256;
         private const int HANDSHAKE_V82_LENGTH = 16;
@@ -24,14 +22,18 @@ namespace Caraota.NET.Engine.Session
 
         private readonly IWinDivertSender _winDivertSender = winDivertSender;
 
-        public HandshakePacket Initialize(WinDivertPacketViewEventArgs winDivertPacket, ReadOnlySpan<byte> payload)
+        public bool Initialize(WinDivertPacketViewEventArgs winDivertPacket, ReadOnlySpan<byte> payload, out HandshakePacketView packetView)
         {
+            packetView = default;
+
             if (TryGetVersion(payload, out ushort version))
             {
-                return CreateCryptoInstances(winDivertPacket, payload, version);
+                packetView = CreateCryptoInstances(winDivertPacket, payload, version);
+
+                return true;
             }
 
-            return default;
+            return false;
         }
 
         private static bool TryGetVersion(ReadOnlySpan<byte> data, out ushort version)
@@ -53,16 +55,15 @@ namespace Caraota.NET.Engine.Session
             return false;
         }
 
-        private HandshakePacket CreateCryptoInstances(WinDivertPacketViewEventArgs args, ReadOnlySpan<byte> payload, ushort version)
+        private HandshakePacketView CreateCryptoInstances(WinDivertPacketViewEventArgs args, ReadOnlySpan<byte> payload, ushort version)
         {
             var mapleSession = new MapleSessionViewEventArgs(args, default);
-            var handshakePacket = new HandshakePacket(mapleSession, payload);
+            var handshakePacket = new HandshakePacketView(mapleSession, payload);
 
             Encryptor = new MapleCrypto(handshakePacket.SIV, handshakePacket.RIV, version);
             Decryptor = new MapleCrypto(handshakePacket.SIV, handshakePacket.RIV, version);
 
             Success = true;
-            HandshakeOp = handshakePacket.Opcode;
 
             _winDivertSender.ReplaceAndSend(args.Packet, payload, args.Address);
 

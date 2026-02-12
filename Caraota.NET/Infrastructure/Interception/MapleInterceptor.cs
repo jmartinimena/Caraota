@@ -7,6 +7,7 @@ using Caraota.NET.Engine.Monitoring;
 
 using Caraota.NET.Common.Utils;
 using Caraota.NET.Common.Events;
+using Caraota.NET.Infrastructure.TCP;
 
 namespace Caraota.NET.Infrastructure.Interception
 {
@@ -27,14 +28,23 @@ namespace Caraota.NET.Infrastructure.Interception
 
         public void StartListening(int port)
         {
-            if (port <= 0 || port > 65535)
-                throw new ArgumentOutOfRangeException(nameof(port), "Puerto inválido.");
+            var wrapper = WinDivertFactory.CreateForTcp(port);
+            StartListening(wrapper);
+        }
 
-            GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
+        public void StartListening(PortRange portRange)
+        {
+            var wrapper = WinDivertFactory.CreateForTcp(portRange);
+            StartListening(wrapper);
+        }
+
+        private void StartListening(WinDivertWrapper wrapper)
+        {
             var currentProcess = Process.GetCurrentProcess();
             currentProcess.PriorityClass = ProcessPriorityClass.RealTime;
+            GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
 
-            _wrapper = WinDivertFactory.CreateForTcpPort(port);
+            _wrapper = wrapper;
             _wrapper.Error += (e) => ErrorOcurred?.Invoke(e);
             _wrapper.PacketReceived += OnHandshakeInit;
             _wrapper.Start();
@@ -96,12 +106,13 @@ namespace Caraota.NET.Infrastructure.Interception
 
         private void InitializeSession(WinDivertPacketViewEventArgs winDivertPacket, ReadOnlySpan<byte> payload)
         {
-            var handshakeArgs = _session.Initialize(winDivertPacket, payload);
+            if(_session.Initialize(winDivertPacket, payload, out var handshakePacketView))
+            {
+                _wrapper.PacketReceived -= OnHandshakeInit;
+                _wrapper.PacketReceived += OnPacketReceived;
 
-            _wrapper.PacketReceived -= OnHandshakeInit;
-            _wrapper.PacketReceived += OnPacketReceived;
-
-            HandshakeReceived?.Invoke(new HandshakeEventArgs(handshakeArgs));
+                HandshakeReceived?.Invoke(new HandshakeEventArgs(handshakePacketView));
+            }
         }
 
         [Conditional("DEBUG")]
@@ -110,6 +121,8 @@ namespace Caraota.NET.Infrastructure.Interception
 
         public void Dispose()
         {
+            _wrapper.PacketReceived -= OnPacketReceived;
+
             _wrapper.Dispose();
             GC.SuppressFinalize(this);
         }

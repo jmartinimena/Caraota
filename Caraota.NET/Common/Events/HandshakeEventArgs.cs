@@ -6,69 +6,72 @@ using System.Diagnostics;
 
 namespace Caraota.NET.Common.Events
 {
-    public readonly ref struct HandshakePacket
+    public readonly ref struct HandshakePacketView
     {
+        public readonly int SIVOffset = 6;
+        public readonly int RIVOffset = 10;
+        public readonly int LocaleOffset = 14;
         public MapleSessionViewEventArgs MapleSessionEventArgs { get; }
         public ReadOnlySpan<byte> Packet { get; }
-        public ReadOnlySpan<byte> Payload { get; }
-        public readonly ushort Opcode { get; }
-        public readonly ushort Version { get; }
         public ReadOnlySpan<byte> SIV { get; }
         public ReadOnlySpan<byte> RIV { get; }
-        public readonly byte Locale { get; }
 
-        public HandshakePacket(MapleSessionViewEventArgs mapleSessionEventArgs, ReadOnlySpan<byte> packet)
+        public HandshakePacketView(MapleSessionViewEventArgs mapleSessionEventArgs, ReadOnlySpan<byte> packet)
         {
-            MapleSessionEventArgs = mapleSessionEventArgs;
             Packet = packet;
-            Payload = packet[2..];
-            Opcode = BinaryPrimitives.ReadUInt16LittleEndian(packet[..2]);
-            Version = BinaryPrimitives.ReadUInt16LittleEndian(packet.Slice(2, 2));
+            MapleSessionEventArgs = mapleSessionEventArgs;
 
-            if (Version == 62)
+            var version = BinaryPrimitives.ReadUInt16LittleEndian(packet.Slice(2, 2));
+            if (version != 62)
             {
-                SIV = Packet.Slice(6, 4);
-                RIV = Packet.Slice(10, 4);
-                Locale = Packet[14];
+                SIVOffset++;
+                RIVOffset++;
+                LocaleOffset++;
             }
-            else
-            {
-                SIV = Packet.Slice(7, 4);
-                RIV = Packet.Slice(11, 4);
-                Locale = Packet[15];
-            }
+
+            SIV = Packet.Slice(SIVOffset, 4);
+            RIV = Packet.Slice(RIVOffset, 4);
         }
     }
 
-    public readonly struct HandshakeEventArgs
+    public readonly struct HandshakeEventArgs : IDisposable
     {
-        private readonly byte[]? _fullBuffer;
-        public readonly int PayloadLen;
-        public readonly int SIVLen;
-        public readonly int RIVLen;
-        public readonly ReadOnlyMemory<byte> Payload => _fullBuffer.AsMemory(0, PayloadLen);
-        public readonly ReadOnlyMemory<byte> SIV => _fullBuffer.AsMemory(PayloadLen, SIVLen);
-        public readonly ReadOnlyMemory<byte> RIV => _fullBuffer.AsMemory(PayloadLen + SIVLen, RIVLen);
-        public readonly ushort Opcode => BinaryPrimitives.ReadUInt16LittleEndian(Payload.Span[..2]);
-        public readonly ushort Version => BinaryPrimitives.ReadUInt16LittleEndian(Payload.Span.Slice(2, 2));
-        public readonly byte Locale => Payload.Span[14];
+        private readonly byte[] _fullBuffer;
+
+        private const int _sivLen = 4;
+        private const int _rivLen = 4;
+        private readonly int _dataLen;
+        private readonly int _sivOffset;
+        private readonly int _rivOffset;
+        private readonly int _localeOffset;
+
+        public readonly ushort Opcode = 0;
+        public readonly ReadOnlyMemory<byte> Payload => _fullBuffer.AsMemory(0, _dataLen);
+        public readonly ReadOnlyMemory<byte> SIV => _fullBuffer.AsMemory(_sivOffset, _sivLen);
+        public readonly ReadOnlyMemory<byte> RIV => _fullBuffer.AsMemory(_rivOffset, _rivLen);
+        public readonly ushort Version => BinaryPrimitives.ReadUInt16LittleEndian(Payload.Span[2..]);
+        public readonly ushort SubVersion => BinaryPrimitives.ReadUInt16LittleEndian(Payload.Span[4..]);
+        public readonly byte Locale => Payload.Span[_localeOffset];
 
         private readonly long _timestamp = Stopwatch.GetTimestamp();
         public readonly string FormattedTime => PacketUtils.GetRealTime(_timestamp).ToString("HH:mm:ss:fff");
 
-        public HandshakeEventArgs(HandshakePacket args)
+        public HandshakeEventArgs(HandshakePacketView args)
         {
-            PayloadLen = args.Packet.Length;
-            SIVLen = args.SIV.Length;
-            RIVLen = args.RIV.Length;
+            _dataLen = args.Packet.Length;
+            _sivOffset = args.SIVOffset;
+            _rivOffset = args.RIVOffset;
+            _localeOffset = args.LocaleOffset;
 
-            int totalNeeded = PayloadLen + SIVLen + RIVLen;
+            _fullBuffer = ArrayPool<byte>.Shared.Rent(_dataLen);
 
-            _fullBuffer = ArrayPool<byte>.Shared.Rent(totalNeeded);
+            args.Packet.CopyTo(_fullBuffer.AsSpan(0, _dataLen));
+        }
 
-            args.Packet.CopyTo(_fullBuffer.AsSpan(0, PayloadLen));
-            args.SIV.CopyTo(_fullBuffer.AsSpan(PayloadLen, SIVLen));
-            args.RIV.CopyTo(_fullBuffer.AsSpan(PayloadLen + SIVLen, RIVLen));
+        public void Dispose()
+        {
+            ArrayPool<byte>.Shared.Return(_fullBuffer);
+            GC.SuppressFinalize(this);
         }
     }
 }

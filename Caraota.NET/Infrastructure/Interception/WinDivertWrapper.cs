@@ -10,6 +10,7 @@ using WinDivertSharp;
 using Caraota.NET.Common.Utils;
 using Caraota.NET.Common.Events;
 using Caraota.NET.Infrastructure.TCP;
+using System.Text;
 
 namespace Caraota.NET.Infrastructure.Interception
 {
@@ -170,7 +171,7 @@ namespace Caraota.NET.Infrastructure.Interception
 
             if (payload.Length > 1000)
             {
-               
+
             }
 
             SendPacket(original, address);
@@ -273,6 +274,9 @@ namespace Caraota.NET.Infrastructure.Interception
     {
         public static WinDivertWrapper CreateForPort(int port, bool outbound = true, bool inbound = true)
         {
+            if (port <= 0 || port > 65535)
+                throw new ArgumentOutOfRangeException(nameof(port), "Puerto inválido.");
+
             string filter;
 
             if (outbound && inbound)
@@ -281,17 +285,45 @@ namespace Caraota.NET.Infrastructure.Interception
             }
             else if (outbound)
             {
-                filter = $"tcp.DstPort == {port}";
+                filter = $"(tcp.DstPort == {port})";
             }
             else
             {
-                filter = $"tcp.SrcPort == {port}";
+                filter = $"(tcp.SrcPort == {port})";
             }
 
-            return new WinDivertWrapper($"tcp.PayloadLength > 0 and ({filter}) and !loopback and !impostor");
+            return new WinDivertWrapper($"tcp.PayloadLength > 0 and {filter} and !loopback and !impostor");
         }
 
-        internal static WinDivertWrapper CreateForTcpPort(int port)
+        public static WinDivertWrapper CreateForPort(PortRange portRange, bool outbound = true, bool inbound = true)
+        {
+
+            if (portRange.Start <= 0 || portRange.End > 65535)
+                throw new ArgumentOutOfRangeException(nameof(portRange), "Rango de puertos inválido.");
+
+            string filter;
+
+            if (outbound && inbound)
+            {
+                filter = $"(tcp.DstPort >= {portRange.Start} and tcp.DstPort <= {portRange.End} or tcp.SrcPort >= {portRange.Start} and tcp.SrcPort <= {portRange.End})";
+            }
+            else if (outbound)
+            {
+                filter = $"(tcp.DstPort >= {portRange.Start} and tcp.DstPort <= {portRange.End})";
+            }
+            else
+            {
+                filter = $"(tcp.SrcPort >= {portRange.Start} and tcp.SrcPort <= {portRange.End})";
+            }
+
+
+            return new WinDivertWrapper($"tcp.PayloadLength > 0 and {filter} and !loopback and !impostor");
+        }
+
+        internal static WinDivertWrapper CreateForTcp(int port)
             => CreateForPort(port, true, true);
+
+        internal static WinDivertWrapper CreateForTcp(PortRange range)
+            => CreateForPort(range, true, true);
     }
 }
