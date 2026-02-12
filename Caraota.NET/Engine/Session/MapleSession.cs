@@ -14,6 +14,7 @@ public interface ISessionState
 
 public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionState
 {
+    public event Action<HandshakeEventArgs>? HandshakeReceived;
     public event Action<MapleSessionViewEventArgs>? PacketDecrypted;
 
     private int startLen = 0;
@@ -26,7 +27,7 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
 
     public bool Success => _sessionManager.Success;
 
-    public HandshakeSessionPacket Initialize(WinDivertPacketViewEventArgs winDivertPacket, ReadOnlySpan<byte> payload)
+    public HandshakePacket Initialize(WinDivertPacketViewEventArgs winDivertPacket, ReadOnlySpan<byte> payload)
         => _sessionManager.Initialize(winDivertPacket, payload);
 
     [MethodImpl(MethodImplOptions.AggressiveOptimization)]
@@ -44,7 +45,14 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
         var iv = args.IsIncoming ? decryptor.RIV : decryptor.SIV;
         var packet = PacketFactory.Parse(payload, iv, args.IsIncoming, parentId, parentReaded);
 
-        if(startLen > 0)
+        if (packet.Opcode == 0) //Handshake
+        {
+            var handshakePacket = Initialize(args, payload);
+            HandshakeReceived?.Invoke(new HandshakeEventArgs(handshakePacket));
+            return;
+        }
+
+        if (startLen > 0)
         {
             packet.ContinuationLength = startLen;
             startLen = 0;
@@ -89,7 +97,7 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
 
             if (finalData != null)
             {
-                _winDivertSender.ReplaceAndSend(args.WinDivertPacket, finalData, args.Address);
+                _winDivertSender.ReplaceAndSend(args.WinDivertPacket, finalData.AsSpan(packet.ContinuationLength), args.Address);
             }
         }
     }

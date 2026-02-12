@@ -41,8 +41,14 @@ namespace Caraota.NET.Infrastructure.Interception
 
             _session = new MapleSession(_wrapper);
             _session.PacketDecrypted += OnPacketDecrypted;
+            _session.HandshakeReceived += OnHandshakeReceived;
 
             SessionMonitor.Start(_session);
+        }
+
+        private void OnHandshakeReceived(HandshakeEventArgs args)
+        {
+            HandshakeReceived?.Invoke(args);
         }
 
         private void OnHandshakeInit(WinDivertPacketViewEventArgs args)

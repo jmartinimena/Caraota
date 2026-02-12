@@ -6,7 +6,7 @@ using System.Diagnostics;
 
 namespace Caraota.NET.Common.Events
 {
-    public readonly ref struct HandshakeSessionPacket
+    public readonly ref struct HandshakePacket
     {
         public MapleSessionViewEventArgs MapleSessionEventArgs { get; }
         public ReadOnlySpan<byte> Packet { get; }
@@ -17,7 +17,7 @@ namespace Caraota.NET.Common.Events
         public ReadOnlySpan<byte> RIV { get; }
         public readonly byte Locale { get; }
 
-        public HandshakeSessionPacket(MapleSessionViewEventArgs mapleSessionEventArgs, ReadOnlySpan<byte> packet)
+        public HandshakePacket(MapleSessionViewEventArgs mapleSessionEventArgs, ReadOnlySpan<byte> packet)
         {
             MapleSessionEventArgs = mapleSessionEventArgs;
             Packet = packet;
@@ -56,7 +56,7 @@ namespace Caraota.NET.Common.Events
         private readonly long _timestamp = Stopwatch.GetTimestamp();
         public readonly string FormattedTime => PacketUtils.GetRealTime(_timestamp).ToString("HH:mm:ss:fff");
 
-        public HandshakeEventArgs(HandshakeSessionPacket args)
+        public HandshakeEventArgs(HandshakePacket args)
         {
             PayloadLen = args.Packet.Length;
             SIVLen = args.SIV.Length;

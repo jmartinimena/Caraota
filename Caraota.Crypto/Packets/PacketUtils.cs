@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.Buffers.Binary;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace Caraota.Crypto.Packets
@@ -8,21 +9,8 @@ namespace Caraota.Crypto.Packets
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe static int GetLength(ReadOnlySpan<byte> header)
         {
-            fixed (byte* ptr = header)
-            {
-                ushort versionMask = Unsafe.ReadUnaligned<ushort>(ptr);
-                ushort lengthMask = Unsafe.ReadUnaligned<ushort>(ptr + 2);
-
-                return versionMask ^ lengthMask;
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public unsafe static int GetLength(byte* ptr)
-        {
-            ushort versionMask = Unsafe.ReadUnaligned<ushort>(ptr);
-            ushort lengthMask = Unsafe.ReadUnaligned<ushort>(ptr + 2);
-
+            ushort versionMask = BinaryPrimitives.ReadUInt16LittleEndian(header);
+            ushort lengthMask = BinaryPrimitives.ReadUInt16LittleEndian(header[2..]);
             return versionMask ^ lengthMask;
         }
 
