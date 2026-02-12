@@ -56,26 +56,16 @@ namespace Caraota.Crypto.Packets
             IsIncoming = isIncoming;
 
             int dataLength = data.Length;
-            int payloadLength = 0;
+            int payloadLength = PacketUtils.GetLength(data);
 
-            fixed (byte* pData = data)
+            if (payloadLength > dataLength - 4)
             {
-                payloadLength = PacketUtils.GetLength(pData);
-
-                if (payloadLength > dataLength - 4)
-                {
-                    RequiresContinuation = true;
-                    payloadLength = dataLength - 4;
-                }
-            }
-
-            fixed (byte* pSrcIv = iv)
-            fixed (byte* pDestIv = IV)
-            {
-                *(uint*)pDestIv = *(uint*)pSrcIv;
+                RequiresContinuation = true;
+                payloadLength = dataLength - 4;
             }
 
             int totalProcessed = payloadLength + 4;
+            iv.CopyTo(IV);
 
             Header = data[..4];
             Payload = data.Slice(4, payloadLength);

@@ -64,7 +64,7 @@ namespace Caraota.NET.Infrastructure.Interception
             if (!TcpHelper.TryExtractPayload(args.Packet,
                 out Span<byte> payload)) return;
 
-            Console.WriteLine($"Original: {Convert.ToHexString(args.Packet)}");
+            //Console.WriteLine($"Original: {Convert.ToHexString(args.Packet)}");
 
             _session.ProcessRaw(args, payload);
         }

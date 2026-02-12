@@ -36,21 +36,9 @@ namespace Caraota.Crypto.Packets
             int totalLen = _dataLen + _ivLen;
             _fullBuffer = ArrayPool<byte>.Shared.Rent(totalLen);
 
-            var srcData = maplePacket.Data;
-            var srcIV = maplePacket.IV;
-
-            fixed (byte* pDest = _fullBuffer)
-            {
-                fixed (byte* pSrcData = srcData)
-                {
-                    Buffer.MemoryCopy(pSrcData, pDest, _dataLen, _dataLen);
-                }
-
-                fixed (byte* pSrcIV = srcIV)
-                {
-                    Buffer.MemoryCopy(pSrcIV, pDest + _dataLen, _ivLen, _ivLen);
-                }
-            }
+            var destSpan = _fullBuffer.AsSpan(0, totalLen);
+            maplePacket.Data.CopyTo(destSpan);
+            maplePacket.IV.CopyTo(destSpan[_dataLen..]);
         }
 
         public readonly string Predict() => PacketUtils.Predict(Payload);

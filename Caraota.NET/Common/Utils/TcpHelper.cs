@@ -7,24 +7,18 @@ namespace Caraota.NET.Common.Utils
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe bool TryExtractPayload(Span<byte> tcpPacket, out Span<byte> payload)
         {
-            fixed (byte* pBase = tcpPacket)
+            int ipH = (tcpPacket[0] & 0x0F) << 2;
+            int tcpH = ((tcpPacket[ipH + 12] & 0xF0) >> 4) << 2;
+            int offset = ipH + tcpH;
+
+            if (offset >= tcpPacket.Length)
             {
-                int ipH = (*pBase & 0x0F) << 2;
-
-                int tcpH = ((*(pBase + ipH + 12) & 0xF0) >> 4) << 2;
-
-                int offset = ipH + tcpH;
-                int len = tcpPacket.Length - offset;
-
-                if (len <= 0)
-                {
-                    payload = default;
-                    return false;
-                }
-
-                payload = new Span<byte>(pBase + offset, len);
-                return true;
+                payload = default;
+                return false;
             }
+
+            payload = tcpPacket[offset..];
+            return true;
         }
     }
 }

@@ -34,15 +34,10 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
     {
         if (startLen > 0)
         {
-            fixed (byte* pStart = startBuffer)
-            fixed (byte* pPayloadBuf = payloadBuffer)
-            fixed (byte* pIncoming = payload)
-            {
-                Buffer.MemoryCopy(pStart, pPayloadBuf, payloadBuffer.Length, startLen);
-                Buffer.MemoryCopy(pIncoming, pPayloadBuf + startLen, payloadBuffer.Length - startLen, payload.Length);
-            }
-
-            payload = payloadBuffer.AsSpan(0, startLen + payload.Length);
+            Span<byte> destination = payloadBuffer.AsSpan(0, startLen + payload.Length);
+            startBuffer.AsSpan(0, startLen).CopyTo(destination);
+            payload.CopyTo(destination[startLen..]);
+            payload = destination;
         }
 
         var decryptor = _sessionManager.Decryptor;
@@ -58,12 +53,7 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
         if (packet.RequiresContinuation)
         {
             startLen = packet.Data.Length;
-
-            fixed (byte* pStart = startBuffer)
-            fixed(byte* pData = packet.Data)
-            {
-                Buffer.MemoryCopy(pData, pStart, startBuffer.Length, startLen);
-            }
+            packet.Data.CopyTo(startBuffer);
         }
 
         decryptor.Decrypt(ref packet);
@@ -91,16 +81,7 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
         var encryptor = _sessionManager.Encryptor;
         encryptor.Encrypt(ref packet);
 
-        fixed (byte* pSource = packet.Data)
-        fixed (byte* pDest = outBuffer)
-        {
-            Buffer.MemoryCopy(
-                pSource,
-                pDest + packet.ParentReaded,
-                outBuffer.Length - packet.ParentReaded,
-                packet.Data.Length
-            );
-        }
+        packet.Data.CopyTo(outBuffer.AsSpan(packet.ParentReaded));
 
         if (packet.Leftovers.Length == 0)
         {
@@ -121,6 +102,6 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
         var address = args.Address;
 
         _sessionManager.Encryptor.Encrypt(ref packet);
-        _winDivertSender.ReplaceAndSend(original, packet.Data.Slice(packet.ContinuationLength), address);
+        _winDivertSender.ReplaceAndSend(original, packet.Data[packet.ContinuationLength..], address);
     }
 }

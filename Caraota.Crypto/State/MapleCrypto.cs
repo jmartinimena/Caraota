@@ -72,11 +72,9 @@ namespace Caraota.Crypto.State
                 Update(iv);
         }
 
-        private static readonly byte[] DefaultSeed = [0xf2, 0x53, 0x50, 0xc6];
-        private void Update(Span<byte> iv)
+        private static void Update(Span<byte> iv)
         {
-            Span<byte> seed = stackalloc byte[4];
-            DefaultSeed.CopyTo(seed);
+            Span<byte> seed = [0xf2, 0x53, 0x50, 0xc6];
 
             for (int i = 0; i < 4; i++)
             {
@@ -84,19 +82,6 @@ namespace Caraota.Crypto.State
             }
 
             seed.CopyTo(iv);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
-        public static bool Validate(MaplePacketView packet, ReadOnlySpan<byte> iv)
-        {
-            if (packet.Header.Length < 4) return false;
-
-            int expectedA = packet.IsIncoming ? -(Version + 1) : Version;
-
-            bool isValid = (packet.Header[0] ^ iv[2]) == (byte)(expectedA & 0xFF) &&
-                           (packet.Header[1] ^ iv[3]) == (byte)((expectedA >> 8) & 0xFF);
-
-            return isValid;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
@@ -129,6 +114,19 @@ namespace Caraota.Crypto.State
             start[1] = (byte)((c >> 8) & 0xFF);
             start[2] = (byte)((c >> 16) & 0xFF);
             start[3] = (byte)((c >> 24) & 0xFF);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
+        public static bool Validate(MaplePacketView packet, ReadOnlySpan<byte> iv)
+        {
+            if (packet.Header.Length < 4) return false;
+
+            int expectedA = packet.IsIncoming ? -(Version + 1) : Version;
+
+            bool isValid = (packet.Header[0] ^ iv[2]) == (byte)(expectedA & 0xFF) &&
+                           (packet.Header[1] ^ iv[3]) == (byte)((expectedA >> 8) & 0xFF);
+
+            return isValid;
         }
     }
 }
