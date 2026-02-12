@@ -1,13 +1,13 @@
-﻿using System.Runtime;
-using System.Diagnostics;
-
-using Caraota.NET.Engine.Logic;
-using Caraota.NET.Engine.Session;
-using Caraota.NET.Engine.Monitoring;
-
-using Caraota.NET.Common.Utils;
+﻿using Caraota.NET.Common.Attributes;
 using Caraota.NET.Common.Events;
+using Caraota.NET.Common.Utils;
+using Caraota.NET.Engine.Logic;
+using Caraota.NET.Engine.Monitoring;
+using Caraota.NET.Engine.Session;
 using Caraota.NET.Infrastructure.TCP;
+using System.Diagnostics;
+using System.Reflection;
+using System.Runtime;
 
 namespace Caraota.NET.Infrastructure.Interception
 {
@@ -36,6 +36,42 @@ namespace Caraota.NET.Infrastructure.Interception
         {
             var wrapper = WinDivertFactory.CreateForTcp(portRange);
             StartListening(wrapper);
+        }
+
+        public void SetHandlers<T>() where T : class, new()
+        {
+            T handlerInstance = new();
+            RegisterHandlers<OutgoingAttribute>(handlerInstance);
+            RegisterHandlers<IncomingAttribute>(handlerInstance);
+        }
+
+        private void RegisterHandlers<TAttribute>(object target) where TAttribute : PacketHandlerAttribute
+        {
+            var flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
+            var outgoingHandlers = target.GetType()
+                .GetMethods(flags)
+                .Select(m => new
+                {
+                    Method = m,
+                    Attr = m.GetCustomAttribute<TAttribute>()
+                })
+                .Where(x => x.Attr != null);
+
+            foreach (var h in outgoingHandlers)
+            {
+                try
+                {
+                    object? finalTarget = h.Method.IsStatic ? null : target;
+                    var handlerDelegate = (Action<MaplePacketEventArgs>)Delegate.CreateDelegate(
+                        typeof(Action<MaplePacketEventArgs>), finalTarget, h.Method);
+
+                    Outgoing.Register(h.Attr!.Opcode, handlerDelegate);
+                }
+                catch (ArgumentException e)
+                {
+                    ErrorOcurred?.Invoke(e);
+                }
+            }
         }
 
         private void StartListening(WinDivertWrapper wrapper)
@@ -80,8 +116,6 @@ namespace Caraota.NET.Infrastructure.Interception
             if (!TcpHelper.TryExtractPayload(args.Packet,
                 out Span<byte> payload)) return;
 
-            //Console.WriteLine($"Original: {Convert.ToHexString(args.Packet)}");
-
             _session.ProcessRaw(args, payload);
         }
 
@@ -106,7 +140,7 @@ namespace Caraota.NET.Infrastructure.Interception
 
         private void InitializeSession(WinDivertPacketViewEventArgs winDivertPacket, ReadOnlySpan<byte> payload)
         {
-            if(_session.Initialize(winDivertPacket, payload, out var handshakePacketView))
+            if (_session.Initialize(winDivertPacket, payload, out var handshakePacketView))
             {
                 _wrapper.PacketReceived -= OnHandshakeInit;
                 _wrapper.PacketReceived += OnPacketReceived;

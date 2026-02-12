@@ -7,8 +7,6 @@ namespace Caraota.NET.Infrastructure.TCP
         private ushort _fakeSeq = 0, _fakeAck = 0;
         public unsafe void ReplacePayload(Span<byte> tcpPacket, ReadOnlySpan<byte> payload, bool isIncoming)
         {
-            //Console.WriteLine($"Original: {Convert.ToHexString(tcpPacket)}");
-
             fixed (byte* pPacket = tcpPacket)
             {
                 int ipH = (*pPacket & 0x0F) << 2;
@@ -47,8 +45,6 @@ namespace Caraota.NET.Infrastructure.TCP
 
                 *(ushort*)(pPacket + 2) = BinaryPrimitives.ReverseEndianness((ushort)totalSize);
             }
-
-            //Console.WriteLine($"Construido: {Convert.ToHexString(tcpPacket)}");
         }
     }
 }
