@@ -1,6 +1,4 @@
-﻿using Caraota.Crypto.Packets;
-
-namespace Caraota.Crypto.State
+﻿namespace Caraota.Crypto.State
 {
     public interface IMapleDecryptor
     {

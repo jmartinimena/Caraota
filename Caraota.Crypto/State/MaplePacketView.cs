@@ -1,7 +1,9 @@
 ﻿using System.Diagnostics;
 using System.Buffers.Binary;
 
-namespace Caraota.Crypto.Packets
+using Caraota.Crypto.Utils;
+
+namespace Caraota.Crypto.State
 {
     /// <summary>
     /// Representa una vista de alto rendimiento sobre un paquete de MapleStory.

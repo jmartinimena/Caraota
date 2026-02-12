@@ -1,8 +1,9 @@
 ﻿using System.Text;
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
+using Caraota.NET.Protocol.Structures;
 
-namespace Caraota.Crypto.Packets
+namespace Caraota.NET.Common.IO
 {
     public ref struct MaplePacketReader
     {

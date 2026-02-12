@@ -1,8 +1,8 @@
 ﻿using System.Runtime.CompilerServices;
 
-using Caraota.Crypto.Packets;
 using Caraota.NET.Common.Events;
 using Caraota.NET.Infrastructure.TCP;
+using Caraota.NET.Protocol.Structures;
 using Caraota.NET.Infrastructure.Interception;
 
 namespace Caraota.NET.Engine.Session;

@@ -1,6 +1,6 @@
 ﻿using WinDivertSharp;
 
-using Caraota.Crypto.Packets;
+using Caraota.Crypto.State;
 using Caraota.NET.Common.Events;
 
 namespace Caraota.NET.Infrastructure.Interception

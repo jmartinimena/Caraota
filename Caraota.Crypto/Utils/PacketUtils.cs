@@ -1,8 +1,8 @@
-﻿using System.Buffers.Binary;
-using System.Diagnostics;
+﻿using System.Diagnostics;
+using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 
-namespace Caraota.Crypto.Packets
+namespace Caraota.Crypto.Utils
 {
     public static class PacketUtils
     {
@@ -32,33 +32,6 @@ namespace Caraota.Crypto.Packets
             }
 
             return _headerBuffer;
-        }
-
-        public static string Predict(MaplePacketView packet)
-        {
-            if (packet.Payload.Length <= 4)
-                return string.Empty;
-
-            var structurePredictor = new StructurePredictor(packet);
-            return structurePredictor.GetStructure();
-        }
-
-        public static string Predict(byte[] packet)
-        {
-            if (packet.Length <= 4)
-                return string.Empty;
-
-            var structurePredictor = new StructurePredictor(packet);
-            return structurePredictor.GetStructure();
-        }
-
-        public static string Predict(ReadOnlyMemory<byte> packet)
-        {
-            if (packet.Length <= 4)
-                return string.Empty;
-
-            var structurePredictor = new StructurePredictor(packet);
-            return structurePredictor.GetStructure();
         }
 
         private static readonly DateTime _startTimeActual = DateTime.Now;

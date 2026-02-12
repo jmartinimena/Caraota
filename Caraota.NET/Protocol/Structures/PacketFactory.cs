@@ -1,4 +1,6 @@
-﻿namespace Caraota.Crypto.Packets
+﻿using Caraota.Crypto.State;
+
+namespace Caraota.NET.Protocol.Structures
 {
     public static class PacketFactory
     {

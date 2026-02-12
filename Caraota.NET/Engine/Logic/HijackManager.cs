@@ -1,4 +1,4 @@
-﻿using Caraota.Crypto.Packets;
+﻿using Caraota.NET.Protocol.Structures;
 using Caraota.NET.Infrastructure.Interception;
 
 namespace Caraota.NET.Engine.Logic

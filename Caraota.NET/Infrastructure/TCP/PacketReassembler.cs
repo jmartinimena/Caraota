@@ -1,4 +1,4 @@
-﻿using Caraota.Crypto.Packets;
+﻿using Caraota.Crypto.State;
 
 namespace Caraota.NET.Infrastructure.TCP
 {
