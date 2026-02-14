@@ -79,7 +79,7 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
             return;
         }
 
-        byte[] outBuffer = _reassembler.GetOrCreateBuffer(packet.Id, packet.TotalLength - packet.ContinuationLength, packet.IsIncoming);
+        var outBuffer = _reassembler.GetOrCreateBuffer(packet.Id, packet.TotalLength - packet.ContinuationLength, packet.IsIncoming);
 
         var encryptor = _sessionManager.Encryptor;
         encryptor.Encrypt(ref packet);
@@ -88,16 +88,13 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
 
         if (packet.Leftovers.Length == 0)
         {
-            byte[]? finalData = _reassembler.Finalize(packet.Id, packet.IsIncoming);
+            var finalData = _reassembler.Finalize(packet.Id, packet.IsIncoming);
 
-            if (args.DivertPacketView!.Length < finalData!.Length)
-            {
-                Console.WriteLine($"IV: {Convert.ToHexString(packet.IV)} DATA: [{packet.Opcode}] -> {Convert.ToHexString(packet.Data)}");
-            }
+            if (finalData is null) return;
 
             if (finalData != null)
             {
-                _winDivertSender.ReplaceAndSend(args.DivertPacketView, finalData, args.Address);
+                _winDivertSender.ReplaceAndSend(args.DivertPacketView, finalData.Value.AsSpan(), args.Address);
                 _stream.CleanPayload(packet.Id);
             }
         }

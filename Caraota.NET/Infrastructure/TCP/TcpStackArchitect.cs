@@ -16,10 +16,6 @@ namespace Caraota.NET.Infrastructure.TCP
                 int totalHeader = ipH + tcpH;
                 int totalSize = totalHeader + payload.Length;
 
-                //Console.WriteLine(new string('=', 32));
-                //Console.WriteLine($"TCP Packet: {Convert.ToHexString(tcpPacket)}");
-                //Console.WriteLine($"Payload: {Convert.ToHexString(payload)}");
-                //Console.WriteLine(new string('=', 32));
                 payload.CopyTo(tcpPacket[totalHeader..]);
 
                 uint* pSeqPtr = (uint*)(pPacket + ipH + 4);
