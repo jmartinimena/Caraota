@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Buffers.Binary;
+﻿using System.Buffers.Binary;
 
 using Caraota.Crypto.Utils;
 
@@ -12,17 +11,17 @@ namespace Caraota.Crypto.State
     /// </summary>
     public ref struct MaplePacketView
     {
+        private static long _counter = 0;
         /// <summary> Identificador único del paquete basado en el timestamp de alta resolución. </summary>
         public long Id { get; init; }
 
         /// <summary> Indica si el paquete proviene del servidor (true) o del cliente (false). </summary>
         public readonly bool IsIncoming { get; init; }
 
-        /// <summary> Vista completa del paquete (Header + Payload) sin incluir leftovers. </summary>
-        public Span<byte> Data { get; set; }
-
         /// <summary> Vista de los 4 bytes del header cifrado de MapleStory. </summary>
         public ReadOnlySpan<byte> Header { get; init; }
+        /// <summary> Vista completa del paquete (Header + Payload) sin incluir leftovers. </summary>
+        public Span<byte> Data { get; set; }
 
         /// <summary> Vista del Vector de Inicialización (IV) utilizado para este paquete específico. </summary>
         public Span<byte> IV { get; init; } = new byte[4];
@@ -30,7 +29,7 @@ namespace Caraota.Crypto.State
         public Span<byte> Payload { get; init; }
 
         /// <summary> Segmento que contiene datos adicionales en el buffer que no pertenecen a este paquete (fragmentación TCP). </summary>
-        public Span<byte> Leftovers { get; init; }
+        public Span<byte> Leftovers { get; set; }
 
         /// <summary> Offset acumulado de lectura en caso de paquetes reensamblados o recursivos. </summary>
         public int ParentReaded { get; set; }
@@ -38,7 +37,7 @@ namespace Caraota.Crypto.State
         public readonly bool RequiresContinuation { get; init; }
 
         /// <summary> Longitud total de la ventana de datos actual (Header + Payload + Leftovers). </summary>
-        public readonly int TotalLength => Header.Length + Payload.Length + Leftovers.Length;
+        public readonly int TotalLength { get; init; }
 
         /// <summary> Opcode del paquete, extraído de los primeros 2 bytes del Payload descifrado. </summary>
         public readonly ushort Opcode => BinaryPrimitives.ReadUInt16LittleEndian(Payload[..2]);
@@ -53,9 +52,10 @@ namespace Caraota.Crypto.State
         /// <param name="parentReaded">Offset de lectura heredado.</param>
         public unsafe MaplePacketView(Span<byte> data, ReadOnlySpan<byte> iv, bool isIncoming, long? parentId = null, int? parentReaded = null)
         {
-            Id = parentId ?? Stopwatch.GetTimestamp();
+            Id = parentId ?? Interlocked.Increment(ref _counter);
             ParentReaded = parentReaded ?? 0;
             IsIncoming = isIncoming;
+            TotalLength = data.Length;
 
             int dataLength = data.Length;
             int payloadLength = PacketUtils.GetLength(data);

@@ -1,6 +1,8 @@
 ﻿using System.Buffers;
 
 using Caraota.Crypto.State;
+using Caraota.Crypto.Utils;
+
 using Caraota.NET.Common.IO;
 
 namespace Caraota.NET.Protocol.Structures
@@ -43,8 +45,6 @@ namespace Caraota.NET.Protocol.Structures
             maplePacket.Data.CopyTo(destSpan);
             maplePacket.IV.CopyTo(destSpan[_dataLen..]);
         }
-
-        public readonly string Predict() => PacketUtils.Predict(Payload);
 
         public MaplePacketReader GetReader() => new(this);
 

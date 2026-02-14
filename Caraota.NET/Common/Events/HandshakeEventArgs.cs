@@ -2,7 +2,8 @@
 using System.Diagnostics;
 using System.Buffers.Binary;
 
-using Caraota.NET.Protocol.Structures;
+using Caraota.Crypto.Utils;
+
 using Caraota.NET.Infrastructure.Interception;
 
 namespace Caraota.NET.Common.Events

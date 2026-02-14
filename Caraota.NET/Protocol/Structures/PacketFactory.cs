@@ -4,6 +4,7 @@ namespace Caraota.NET.Protocol.Structures
 {
     public static class PacketFactory
     {
+
         public static MaplePacket? Create(
             Span<byte> data,
             ReadOnlySpan<byte> iv,

@@ -1,13 +1,16 @@
-﻿using Caraota.NET.Common.Attributes;
-using Caraota.NET.Common.Events;
-using Caraota.NET.Common.Utils;
-using Caraota.NET.Engine.Logic;
-using Caraota.NET.Engine.Monitoring;
-using Caraota.NET.Engine.Session;
-using Caraota.NET.Infrastructure.TCP;
-using System.Diagnostics;
+﻿using System.Runtime;
 using System.Reflection;
-using System.Runtime;
+using System.Diagnostics;
+
+using Caraota.NET.Common.Utils;
+using Caraota.NET.Common.Events;
+using Caraota.NET.Common.Attributes;
+
+using Caraota.NET.Engine.Logic;
+using Caraota.NET.Engine.Session;
+using Caraota.NET.Engine.Monitoring;
+
+using Caraota.NET.Infrastructure.TCP;
 
 namespace Caraota.NET.Infrastructure.Interception
 {
@@ -25,18 +28,6 @@ namespace Caraota.NET.Infrastructure.Interception
         private WinDivertWrapper _wrapper = default!;
 
         private readonly Stopwatch _sw = new();
-
-        public void StartListening(int port)
-        {
-            var wrapper = WinDivertFactory.CreateForTcp(port);
-            StartListening(wrapper);
-        }
-
-        public void StartListening(PortRange portRange)
-        {
-            var wrapper = WinDivertFactory.CreateForTcp(portRange);
-            StartListening(wrapper);
-        }
 
         public void SetHandlers<T>() where T : class, new()
         {
@@ -74,6 +65,18 @@ namespace Caraota.NET.Infrastructure.Interception
             }
         }
 
+        public void StartListening(int port)
+        {
+            var wrapper = WinDivertFactory.CreateForTcp(port);
+            StartListening(wrapper);
+        }
+
+        public void StartListening(PortRange portRange)
+        {
+            var wrapper = WinDivertFactory.CreateForTcp(portRange);
+            StartListening(wrapper);
+        }
+
         private void StartListening(WinDivertWrapper wrapper)
         {
             var currentProcess = Process.GetCurrentProcess();
@@ -82,7 +85,7 @@ namespace Caraota.NET.Infrastructure.Interception
 
             _wrapper = wrapper;
             _wrapper.Error += (e) => ErrorOcurred?.Invoke(e);
-            _wrapper.PacketReceived += OnHandshakeInit;
+            _wrapper.PacketReceived += OnPacketReceived;
             _wrapper.Start();
 
             _session = new MapleSession(_wrapper);
@@ -97,16 +100,6 @@ namespace Caraota.NET.Infrastructure.Interception
             HandshakeReceived?.Invoke(args);
         }
 
-        private void OnHandshakeInit(WinDivertPacketViewEventArgs args)
-        {
-            SessionMonitor.LastPacketInterceptedTime = Stopwatch.GetTimestamp();
-
-            if (!TcpHelper.TryExtractPayload(args.Packet,
-                out Span<byte> payload)) return;
-
-            InitializeSession(args, payload);
-        }
-
         private void OnPacketReceived(WinDivertPacketViewEventArgs args)
         {
             _sw.Restart();
@@ -115,6 +108,8 @@ namespace Caraota.NET.Infrastructure.Interception
 
             if (!TcpHelper.TryExtractPayload(args.Packet,
                 out Span<byte> payload)) return;
+            
+            //Console.WriteLine($"Original: {Convert.ToHexString(payload)}");
 
             _session.ProcessRaw(args, payload);
         }
@@ -136,17 +131,6 @@ namespace Caraota.NET.Infrastructure.Interception
 
             double ns = _sw.Elapsed.TotalNanoseconds;
             LogDiagnostic(ns);
-        }
-
-        private void InitializeSession(WinDivertPacketViewEventArgs winDivertPacket, ReadOnlySpan<byte> payload)
-        {
-            if (_session.Initialize(winDivertPacket, payload, out var handshakePacketView))
-            {
-                _wrapper.PacketReceived -= OnHandshakeInit;
-                _wrapper.PacketReceived += OnPacketReceived;
-
-                HandshakeReceived?.Invoke(new HandshakeEventArgs(handshakePacketView));
-            }
         }
 
         [Conditional("DEBUG")]

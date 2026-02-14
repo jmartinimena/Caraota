@@ -2,14 +2,7 @@
 
 namespace Caraota.NET.Infrastructure.TCP
 {
-    public interface IPacketReassembler
-    {
-        bool IsFragment(MaplePacketView packet);
-        byte[] GetOrCreateBuffer(long id, int totalLength, bool isIncoming);
-        byte[]? Finalize(long id, bool isIncoming);
-    }
-
-    public class PacketReassembler : IPacketReassembler
+    public class PacketReassembler
     {
         private readonly Dictionary<long, byte[]> _incomingBuffer = [];
         private readonly Dictionary<long, byte[]> _outgoingBuffer = [];

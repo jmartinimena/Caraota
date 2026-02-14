@@ -1,8 +1,11 @@
 ﻿using System.Runtime.CompilerServices;
 
 using Caraota.NET.Common.Events;
-using Caraota.NET.Infrastructure.TCP;
+
+using Caraota.NET.Protocol.Stream;
 using Caraota.NET.Protocol.Structures;
+
+using Caraota.NET.Infrastructure.TCP;
 using Caraota.NET.Infrastructure.Interception;
 
 namespace Caraota.NET.Engine.Session;
@@ -17,13 +20,11 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
     public event Action<HandshakeEventArgs>? HandshakeReceived;
     public event Action<MapleSessionViewEventArgs>? PacketDecrypted;
 
-    private int startLen = 0;
-    private readonly byte[] startBuffer = new byte[4096];
-    private readonly byte[] payloadBuffer = new byte[32000];
-
-    private readonly IWinDivertSender _winDivertSender = winDivertSender;
-    private readonly IPacketReassembler _reassembler = new PacketReassembler();
+    private readonly MapleStream _stream = new();
     private readonly MapleSessionManager _sessionManager = new(winDivertSender);
+
+    private readonly PacketReassembler _reassembler = new();
+    private readonly IWinDivertSender _winDivertSender = winDivertSender;
 
     public bool Success => _sessionManager.Success;
 
@@ -31,51 +32,44 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
         => _sessionManager.Initialize(winDivertPacket, payload, out handshakePacketView);
 
     [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-    public unsafe void ProcessRaw(WinDivertPacketViewEventArgs args, Span<byte> payload, long? parentId = null, int? parentReaded = null)
+    public void ProcessRaw(WinDivertPacketViewEventArgs args, Span<byte> payload, long? parentId = null, int? parentReaded = null)
     {
-        if (startLen > 0)
-        {
-            Span<byte> destination = payloadBuffer.AsSpan(0, startLen + payload.Length);
-            startBuffer.AsSpan(0, startLen).CopyTo(destination);
-            payload.CopyTo(destination[startLen..]);
-            payload = destination;
-        }
-
         var decryptor = _sessionManager.Decryptor;
-        var iv = args.IsIncoming ? decryptor.RIV : decryptor.SIV;
+
+        var iv = args.IsIncoming ? decryptor?.RIV : decryptor?.SIV;
         var packet = PacketFactory.Parse(payload, iv, args.IsIncoming, parentId, parentReaded);
 
-        if (packet.Opcode == 0)
-        {
-            if (Initialize(args, payload, out var handshakePacketView))
-                HandshakeReceived?.Invoke(new HandshakeEventArgs(handshakePacketView));
+        var unifiedPayload = _stream.GetUnifiedPayload(packet.Id, payload, out int contLen);
 
-            return;
+        if (contLen > 0)
+        {
+            packet = PacketFactory.Parse(unifiedPayload, iv, args.IsIncoming, packet.Id, packet.ParentReaded);
+            packet.ContinuationLength = contLen;
         }
 
-        if (startLen > 0)
+
+        if (packet.Opcode == 0 && Initialize(args, payload, out var handshakePacketView))
         {
-            packet.ContinuationLength = startLen;
-            startLen = 0;
+            HandshakeReceived?.Invoke(new HandshakeEventArgs(handshakePacketView));
+            return;
         }
 
         if (packet.RequiresContinuation)
         {
-            startLen = packet.Data.Length;
-            packet.Data.CopyTo(startBuffer);
+            _stream.SaveForContinuation(packet.Id, packet.Data);
         }
 
-        decryptor.Decrypt(ref packet);
+        decryptor!.Decrypt(ref packet);
         PacketDecrypted?.Invoke(new MapleSessionViewEventArgs(args, packet));
 
         if (packet.Leftovers.Length == 0) return;
 
-        int newOffset = packet.ParentReaded + packet.Header.Length + packet.Payload.Length;
+        int newOffset = packet.ParentReaded + packet.Header.Length + packet.Payload.Length - packet.ContinuationLength;
         ProcessRaw(args, packet.Leftovers, packet.Id, newOffset);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-    public unsafe void ProcessDecrypted(MapleSessionViewEventArgs args)
+    public void ProcessDecrypted(MapleSessionViewEventArgs args)
     {
         var packet = args.MaplePacketView;
 
@@ -85,29 +79,35 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
             return;
         }
 
-        byte[] outBuffer = _reassembler.GetOrCreateBuffer(packet.Id, packet.TotalLength, packet.IsIncoming);
+        byte[] outBuffer = _reassembler.GetOrCreateBuffer(packet.Id, packet.TotalLength - packet.ContinuationLength, packet.IsIncoming);
 
         var encryptor = _sessionManager.Encryptor;
         encryptor.Encrypt(ref packet);
 
-        packet.Data.CopyTo(outBuffer.AsSpan(packet.ParentReaded));
+        packet.Data[packet.ContinuationLength..].CopyTo(outBuffer.AsSpan(packet.ParentReaded));
 
         if (packet.Leftovers.Length == 0)
         {
             byte[]? finalData = _reassembler.Finalize(packet.Id, packet.IsIncoming);
 
+            if (args.DivertPacketView!.Length < finalData!.Length)
+            {
+                Console.WriteLine($"IV: {Convert.ToHexString(packet.IV)} DATA: [{packet.Opcode}] -> {Convert.ToHexString(packet.Data)}");
+            }
+
             if (finalData != null)
             {
-                _winDivertSender.ReplaceAndSend(args.WinDivertPacket, finalData.AsSpan(packet.ContinuationLength), args.Address);
+                _winDivertSender.ReplaceAndSend(args.DivertPacketView, finalData, args.Address);
+                _stream.CleanPayload(packet.Id);
             }
         }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-    private unsafe void EncryptAndSend(MapleSessionViewEventArgs args)
+    private void EncryptAndSend(MapleSessionViewEventArgs args)
     {
         var packet = args.MaplePacketView;
-        var original = args.WinDivertPacket;
+        var original = args.DivertPacketView;
         var address = args.Address;
 
         _sessionManager.Encryptor.Encrypt(ref packet);
