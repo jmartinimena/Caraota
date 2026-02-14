@@ -21,9 +21,9 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
     public event Action<MapleSessionViewEventArgs>? PacketDecrypted;
 
     private readonly MapleStream _stream = new();
+    private readonly PacketReassembler _reassembler = new();
     private readonly MapleSessionManager _sessionManager = new(winDivertSender);
 
-    private readonly PacketReassembler _reassembler = new();
     private readonly IWinDivertSender _winDivertSender = winDivertSender;
 
     public bool Success => _sessionManager.Success;

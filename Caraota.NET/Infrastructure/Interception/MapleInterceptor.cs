@@ -102,15 +102,13 @@ namespace Caraota.NET.Infrastructure.Interception
 
         private void OnPacketReceived(WinDivertPacketViewEventArgs args)
         {
-            _sw.Restart();
+            //_sw.Restart();
 
             SessionMonitor.LastPacketInterceptedTime = Stopwatch.GetTimestamp();
 
             if (!TcpHelper.TryExtractPayload(args.Packet,
                 out Span<byte> payload)) return;
             
-            //Console.WriteLine($"Original: {Convert.ToHexString(payload)}");
-
             _session.ProcessRaw(args, payload);
         }
 
@@ -129,8 +127,8 @@ namespace Caraota.NET.Infrastructure.Interception
 
             _session.ProcessDecrypted(args);
 
-            double ns = _sw.Elapsed.TotalNanoseconds;
-            LogDiagnostic(ns);
+            //double ns = _sw.Elapsed.TotalNanoseconds;
+            //LogDiagnostic(ns);
         }
 
         [Conditional("DEBUG")]
