@@ -19,7 +19,7 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : IDisposable
     private readonly MapleStream _stream = new();
     private readonly MapleSessionManager _sessionManager = new(winDivertSender);
 
-    public void ProcessRaw(WinDivertPacketViewEventArgs args, Span<byte> payload, long? parentId = null, int? parentReaded = null)
+    public void Decrypt(WinDivertPacketViewEventArgs args, Span<byte> payload, long? parentId = null, int? parentReaded = null)
     {
         var decryptor = _sessionManager.Decryptor;
 
@@ -60,10 +60,10 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : IDisposable
         if (packet.Leftovers.Length == 0) return;
 
         int newOffset = packet.ParentReaded + packet.Header.Length + packet.Payload.Length - packet.ContinuationLength;
-        ProcessRaw(args, packet.Leftovers, packet.Id, newOffset);
+        Decrypt(args, packet.Leftovers, packet.Id, newOffset);
     }
 
-    public void ProcessDecrypted(MapleSessionViewEventArgs args)
+    public void Encrypt(MapleSessionViewEventArgs args)
     {
         var packet = args.MaplePacketView;
 
@@ -102,17 +102,17 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : IDisposable
         packet.Release();
     }
 
-    public void Encrypt(ref MaplePacketView packet)
+    private void Encrypt(ref MaplePacketView packet)
     {
         _sessionManager.Encryptor.Encrypt(packet.Payload, packet.IsIncoming, packet.RequiresContinuation);
     }
 
-    public void Decrypt(ref MaplePacketView packet)
+    private void Decrypt(ref MaplePacketView packet)
     {
         _sessionManager.Decryptor.Decrypt(packet.Payload, packet.IsIncoming, packet.RequiresContinuation);
     }
 
-    public void ReplaceAndAsend(ReadOnlySpan<byte> payload, MapleSessionViewEventArgs args)
+    private void ReplaceAndAsend(ReadOnlySpan<byte> payload, MapleSessionViewEventArgs args)
     {
         winDivertSender.ReplaceAndSend(payload, args.DivertPacketView, args.Address);
     }

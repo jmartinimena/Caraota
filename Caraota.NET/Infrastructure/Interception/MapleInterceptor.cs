@@ -7,10 +7,9 @@ using Caraota.NET.Common.Events;
 using Caraota.NET.Common.Attributes;
 
 using Caraota.NET.Core.Session;
+using Caraota.NET.Core.Models.Views;
 
 using Caraota.NET.Infrastructure.TCP;
-using Caraota.Crypto.State;
-using Caraota.NET.Core.Models.Views;
 
 namespace Caraota.NET.Infrastructure.Interception
 {
@@ -87,23 +86,17 @@ namespace Caraota.NET.Infrastructure.Interception
             _wrapper.Start();
 
             _session = new MapleSession(_wrapper);
-            _session.Error += (e) => ErrorOcurred?.Invoke(e);
             _session.PacketDecrypted += OnPacketDecrypted;
-            _session.HandshakeReceived += OnHandshakeReceived;
-        }
-
-        private void OnHandshakeReceived(HandshakePacketViewEventArgs args)
-        {
-            HandshakeReceived?.Invoke(args);
+            _session.Error += (e) => ErrorOcurred?.Invoke(e);
+            _session.HandshakeReceived += (args) => HandshakeReceived?.Invoke(args);
         }
 
         private void OnPacketReceived(WinDivertPacketViewEventArgs args)
         {
-            //_sw.Restart();
             if (!TcpHelper.TryExtractPayload(args.Packet,
                 out Span<byte> payload)) return;
             
-            _session.ProcessRaw(args, payload);
+            _session.Decrypt(args, payload);
         }
 
         private void OnPacketDecrypted(MapleSessionViewEventArgs args)
@@ -117,15 +110,8 @@ namespace Caraota.NET.Infrastructure.Interception
             if (!args.MaplePacketView.RequiresContinuation)
                 packetSide.Dispatch(maplePacketEventArgs);
 
-            _session.ProcessDecrypted(args);
-
-            //double ns = _sw.Elapsed.TotalNanoseconds;
-            //LogDiagnostic(ns);
+            _session.Encrypt(args);
         }
-
-        [Conditional("DEBUG")]
-        private static void LogDiagnostic(double nanoseconds)
-            => Debug.WriteLine($"[Interceptor] Cycle: {nanoseconds} ns");
 
         public void Dispose()
         {
