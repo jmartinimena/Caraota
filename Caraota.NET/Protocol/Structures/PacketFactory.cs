@@ -1,4 +1,5 @@
 ﻿using Caraota.Crypto.State;
+using System.Diagnostics;
 
 namespace Caraota.NET.Protocol.Structures
 {
@@ -12,7 +13,12 @@ namespace Caraota.NET.Protocol.Structures
         {
             if (data.Length < 4) return null;
 
-            var decodedPacket = new MaplePacketView(data, iv, isIncoming);
+            var decodedPacket = new MaplePacketView(
+                data, 
+                iv, 
+                isIncoming, 
+                Stopwatch.GetTimestamp());
+
             return new MaplePacket(decodedPacket);
         }
 
@@ -20,10 +26,17 @@ namespace Caraota.NET.Protocol.Structures
             Span<byte> data,
             ReadOnlySpan<byte> iv,
             bool isIncoming,
+            long timestamp,
             long? parentId = null,
             int? parentReaded = null)
         {
-            return new MaplePacketView(data, iv, isIncoming, parentId, parentReaded);
+            return new MaplePacketView(
+                data, 
+                iv, 
+                isIncoming,
+                timestamp,
+                parentId, 
+                parentReaded);
         }
 
         public static MaplePacketView Parse(MaplePacket packet)
@@ -31,7 +44,8 @@ namespace Caraota.NET.Protocol.Structures
             return new MaplePacketView(
                 packet.Data.Span, 
                 packet.IV.Span, 
-                packet.IsIncoming);
+                packet.IsIncoming,
+                packet.Timestamp);
         }
     }
 }

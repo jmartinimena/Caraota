@@ -9,13 +9,13 @@ namespace Caraota.NET.Protocol.Structures
 {
     public readonly struct MaplePacket : IDisposable
     {
-        private readonly long _timestamp;
         private readonly byte[]? _fullBuffer;
         private const int _ivLen = 4;
         private const int _headerLen = 4;
         private readonly int _dataLen;
         private readonly int _payloadLen;
 
+        public readonly long Timestamp;
         public readonly ushort Opcode;
         public readonly bool IsIncoming;
 
@@ -27,11 +27,11 @@ namespace Caraota.NET.Protocol.Structures
         public readonly string HeaderStr => Convert.ToHexString(Header.Span);
         public readonly string PayloadStr => Convert.ToHexString(Payload.Span);
         public readonly string ToHexString() => Convert.ToHexString(Data.Span);
-        public readonly string FormattedTime => PacketUtils.GetRealTime(_timestamp).ToString("HH:mm:ss:fff");
+        public readonly string FormattedTime => PacketUtils.GetRealTime(Timestamp).ToString("HH:mm:ss:fff");
 
         public unsafe MaplePacket(MaplePacketView maplePacket)
         {
-            _timestamp = maplePacket.Id;
+            Timestamp = maplePacket.Timestamp;
             _dataLen = maplePacket.Data.Length;
             _payloadLen = maplePacket.Payload.Length;
 

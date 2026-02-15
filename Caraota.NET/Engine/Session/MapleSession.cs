@@ -1,6 +1,4 @@
-﻿using System.Runtime.CompilerServices;
-
-using Caraota.NET.Common.Events;
+﻿using Caraota.NET.Common.Events;
 
 using Caraota.NET.Protocol.Stream;
 using Caraota.NET.Protocol.Structures;
@@ -22,8 +20,6 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
     private readonly MapleStream _stream = new();
     private readonly MapleSessionManager _sessionManager = new(winDivertSender);
 
-    private readonly IWinDivertSender _winDivertSender = winDivertSender;
-
     public bool Success => _sessionManager.Success;
 
     public bool Initialize(WinDivertPacketViewEventArgs winDivertPacket, ReadOnlySpan<byte> payload, out HandshakePacketView handshakePacketView)
@@ -34,13 +30,13 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
         var decryptor = _sessionManager.Decryptor;
 
         var iv = args.IsIncoming ? decryptor?.RIV : decryptor?.SIV;
-        var packet = PacketFactory.Parse(payload, iv, args.IsIncoming, parentId, parentReaded);
+        var packet = PacketFactory.Parse(payload, iv, args.IsIncoming, args.Address.Timestamp, parentId, parentReaded);
 
         var unifiedPayload = _stream.GetUnifiedPayload(packet.Id, payload, out int contLen);
 
         if (contLen > 0)
         {
-            packet = PacketFactory.Parse(unifiedPayload, iv, args.IsIncoming, packet.Id, packet.ParentReaded);
+            packet = PacketFactory.Parse(unifiedPayload, iv, args.IsIncoming, args.Address.Timestamp, packet.Id, packet.ParentReaded);
             packet.ContinuationLength = contLen;
         }
 
@@ -90,7 +86,7 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
 
             if (finalData != null)
             {
-                _winDivertSender.ReplaceAndSend(args.DivertPacketView, finalData.Value.AsSpan(), args.Address);
+                winDivertSender.ReplaceAndSend(args.DivertPacketView, finalData.Value.AsSpan(), args.Address);
                 _stream.CleanPayload(packet.Id);
             }
         }
@@ -103,6 +99,6 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
         var address = args.Address;
 
         _sessionManager.Encryptor.Encrypt(ref packet);
-        _winDivertSender.ReplaceAndSend(original, packet.Data[packet.ContinuationLength..], address);
+        winDivertSender.ReplaceAndSend(original, packet.Data[packet.ContinuationLength..], address);
     }
 }
