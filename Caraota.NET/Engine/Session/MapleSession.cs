@@ -5,7 +5,6 @@ using Caraota.NET.Common.Events;
 using Caraota.NET.Protocol.Stream;
 using Caraota.NET.Protocol.Structures;
 
-using Caraota.NET.Infrastructure.TCP;
 using Caraota.NET.Infrastructure.Interception;
 
 namespace Caraota.NET.Engine.Session;
@@ -21,7 +20,6 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
     public event Action<MapleSessionViewEventArgs>? PacketDecrypted;
 
     private readonly MapleStream _stream = new();
-    private readonly PacketReassembler _reassembler = new();
     private readonly MapleSessionManager _sessionManager = new(winDivertSender);
 
     private readonly IWinDivertSender _winDivertSender = winDivertSender;
@@ -31,7 +29,6 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
     public bool Initialize(WinDivertPacketViewEventArgs winDivertPacket, ReadOnlySpan<byte> payload, out HandshakePacketView handshakePacketView)
         => _sessionManager.Initialize(winDivertPacket, payload, out handshakePacketView);
 
-    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     public void ProcessRaw(WinDivertPacketViewEventArgs args, Span<byte> payload, long? parentId = null, int? parentReaded = null)
     {
         var decryptor = _sessionManager.Decryptor;
@@ -68,18 +65,17 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
         ProcessRaw(args, packet.Leftovers, packet.Id, newOffset);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     public void ProcessDecrypted(MapleSessionViewEventArgs args)
     {
         var packet = args.MaplePacketView;
 
-        if (!_reassembler.IsFragment(packet))
+        if (!_stream.IsFragment(packet))
         {
             EncryptAndSend(args);
             return;
         }
 
-        var outBuffer = _reassembler.GetOrCreateBuffer(packet.Id, packet.TotalLength - packet.ContinuationLength, packet.IsIncoming);
+        var outBuffer = _stream.GetOrCreateBuffer(packet.Id, packet.TotalLength - packet.ContinuationLength, packet.IsIncoming);
 
         var encryptor = _sessionManager.Encryptor;
         encryptor.Encrypt(ref packet);
@@ -88,7 +84,7 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
 
         if (packet.Leftovers.Length == 0)
         {
-            var finalData = _reassembler.Finalize(packet.Id, packet.IsIncoming);
+            var finalData = _stream.Finalize(packet.Id, packet.IsIncoming);
 
             if (finalData is null) return;
 
@@ -100,7 +96,6 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
         }
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
     private void EncryptAndSend(MapleSessionViewEventArgs args)
     {
         var packet = args.MaplePacketView;
