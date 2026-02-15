@@ -1,9 +1,10 @@
 ﻿using System.Text;
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
-using Caraota.NET.Protocol.Structures;
 
-namespace Caraota.NET.Common.IO
+using Caraota.NET.Core.Models;
+
+namespace Caraota.NET.Core.IO
 {
     public ref struct MaplePacketReader
     {
@@ -14,55 +15,55 @@ namespace Caraota.NET.Common.IO
             _payload = payload;
         }
 
-        public MaplePacketReader(MaplePacket maplePacketView)
+        public MaplePacketReader(MaplePacket maplePacket)
         {
-            _payload = maplePacketView.Payload.Span[2..];
+            _payload = maplePacket.Payload.Span[2..];
         }
 
-        public bool ReadBoolean(int? position = 0)
+        public bool ReadBoolean(int? position = null)
         {
             int pos = UpdatePosition<bool>(position);
             byte raw = _payload[pos];
             return raw != 0;
         }
 
-        public ushort ReadUShort(int? position = 0)
+        public ushort ReadUShort(int? position = null)
         {
             int pos = UpdatePosition<ushort>(position);
             return BinaryPrimitives.ReadUInt16LittleEndian(_payload[pos..]);
         }
 
-        public short ReadShort(int? position = 0)
+        public short ReadShort(int? position = null)
         {
             int pos = UpdatePosition<short>(position);
             return BinaryPrimitives.ReadInt16LittleEndian(_payload[pos..]);
         }
 
-        public uint ReadUInt(int? position = 0)
+        public uint ReadUInt(int? position = null)
         {
             int pos = UpdatePosition<uint>(position);
             return BinaryPrimitives.ReadUInt32LittleEndian(_payload[pos..]);
         }
 
-        public int ReadInt(int? position = 0)
+        public int ReadInt(int? position = null)
         {
             int pos = UpdatePosition<int>(position);
             return BinaryPrimitives.ReadInt32LittleEndian(_payload[pos..]);
         }
 
-        public ulong ReadULong(int? position = 0)
+        public ulong ReadULong(int? position = null)
         {
             int pos = UpdatePosition<ulong>(position);
             return BinaryPrimitives.ReadUInt64LittleEndian(_payload[pos..]);
         }
 
-        public long ReadLong(int? position = 0)
+        public long ReadLong(int? position = null)
         {
             int pos = UpdatePosition<long>(position);
             return BinaryPrimitives.ReadInt64LittleEndian(_payload[pos..]);
         }
 
-        public string ReadString(int? position = 0)
+        public string ReadString(int? position = null)
         {
             int pos = UpdatePosition<ushort>(position);
             ushort len = ReadUShort(pos);

@@ -6,9 +6,7 @@ using Caraota.NET.Common.Utils;
 using Caraota.NET.Common.Events;
 using Caraota.NET.Common.Attributes;
 
-using Caraota.NET.Engine.Logic;
-using Caraota.NET.Engine.Session;
-
+using Caraota.NET.Core.Session;
 using Caraota.NET.Infrastructure.TCP;
 
 namespace Caraota.NET.Infrastructure.Interception
@@ -20,7 +18,6 @@ namespace Caraota.NET.Infrastructure.Interception
 
         public readonly PacketSide Outgoing = new();
         public readonly PacketSide Incoming = new();
-        public readonly HijackManager HijackManager = new();
 
         private MapleSession _session = default!;
         private WinDivertWrapper _wrapper = default!;
@@ -108,8 +105,6 @@ namespace Caraota.NET.Infrastructure.Interception
 
         private void OnPacketDecrypted(MapleSessionViewEventArgs args)
         {
-            HijackManager.ProcessQueue(ref args);
-
             var maplePacketEventArgs = new MaplePacketEventArgs(args);
             var packetSide = args.MaplePacketView.IsIncoming ? Incoming : Outgoing;
 

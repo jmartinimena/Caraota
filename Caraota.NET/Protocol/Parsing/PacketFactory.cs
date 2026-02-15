@@ -1,7 +1,8 @@
-﻿using Caraota.Crypto.State;
-using System.Diagnostics;
+﻿using System.Diagnostics;
+using Caraota.Crypto.State;
+using Caraota.NET.Core.Models;
 
-namespace Caraota.NET.Protocol.Structures
+namespace Caraota.NET.Protocol.Parsing
 {
     public static class PacketFactory
     {

@@ -1,9 +1,8 @@
 ﻿using WinDivertSharp;
 
 using Caraota.Crypto.State;
-using Caraota.NET.Common.Events;
 
-namespace Caraota.NET.Infrastructure.Interception
+namespace Caraota.NET.Common.Events
 {
     public ref struct MapleSessionViewEventArgs(WinDivertPacketViewEventArgs args, MaplePacketView packet)
     {

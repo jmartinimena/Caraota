@@ -1,5 +1,4 @@
-﻿using Caraota.NET.Protocol.Structures;
-using Caraota.NET.Infrastructure.Interception;
+﻿using Caraota.NET.Core.Models;
 
 namespace Caraota.NET.Common.Events
 {

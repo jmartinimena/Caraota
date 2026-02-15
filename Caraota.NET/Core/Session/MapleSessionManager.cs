@@ -2,10 +2,11 @@
 
 using Caraota.Crypto.State;
 
+using Caraota.NET.Core.Models;
 using Caraota.NET.Common.Events;
 using Caraota.NET.Infrastructure.Interception;
 
-namespace Caraota.NET.Engine.Session
+namespace Caraota.NET.Core.Session
 {
     public class MapleSessionManager(IWinDivertSender winDivertSender)
     {

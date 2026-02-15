@@ -4,12 +4,12 @@ using System.Buffers.Binary;
 
 using Caraota.Crypto.State;
 
-namespace Caraota.NET.Protocol.Structures
+namespace Caraota.NET.Protocol.Parsing
 {
     public class StructurePredictor
     {
-        private readonly ReadOnlyMemory<byte> _packet;
         private string _structure = string.Empty;
+        private readonly ReadOnlyMemory<byte> _packet;
 
         public StructurePredictor(MaplePacketView packet)
         {

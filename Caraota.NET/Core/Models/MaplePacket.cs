@@ -1,11 +1,9 @@
 ﻿using System.Buffers;
-
 using Caraota.Crypto.State;
 using Caraota.Crypto.Utils;
+using Caraota.NET.Core.IO;
 
-using Caraota.NET.Common.IO;
-
-namespace Caraota.NET.Protocol.Structures
+namespace Caraota.NET.Core.Models
 {
     public readonly struct MaplePacket : IDisposable
     {
@@ -20,9 +18,9 @@ namespace Caraota.NET.Protocol.Structures
         public readonly bool IsIncoming;
 
         public readonly Memory<byte> Data => _fullBuffer.AsMemory(0, _dataLen);
-        public readonly ReadOnlyMemory<byte> IV => _fullBuffer.AsMemory(_dataLen, _ivLen);
         public readonly ReadOnlyMemory<byte> Header => _fullBuffer.AsMemory(0, _headerLen);
         public readonly ReadOnlyMemory<byte> Payload => _fullBuffer.AsMemory(_headerLen, _payloadLen);
+        public readonly ReadOnlyMemory<byte> IV => _fullBuffer.AsMemory(_dataLen, _ivLen);
         public readonly string IVStr => Convert.ToHexString(IV.Span);
         public readonly string HeaderStr => Convert.ToHexString(Header.Span);
         public readonly string PayloadStr => Convert.ToHexString(Payload.Span);
