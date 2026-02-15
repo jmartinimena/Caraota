@@ -12,7 +12,7 @@ public interface ISessionState
     public bool Success { get; }
 }
 
-public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionState
+public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionState, IDisposable
 {
     public event Action<HandshakeEventArgs>? HandshakeReceived;
     public event Action<MapleSessionViewEventArgs>? PacketDecrypted;
@@ -100,5 +100,10 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
 
         _sessionManager.Encryptor.Encrypt(ref packet);
         winDivertSender.ReplaceAndSend(original, packet.Data[packet.ContinuationLength..], address);
+    }
+
+    public void Dispose()
+    {
+        _stream.Dispose();
     }
 }

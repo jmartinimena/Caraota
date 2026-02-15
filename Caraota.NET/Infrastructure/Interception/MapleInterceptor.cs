@@ -140,6 +140,7 @@ namespace Caraota.NET.Infrastructure.Interception
             _wrapper.PacketReceived -= OnPacketReceived;
 
             _wrapper.Dispose();
+            _session.Dispose();
             GC.SuppressFinalize(this);
         }
     }

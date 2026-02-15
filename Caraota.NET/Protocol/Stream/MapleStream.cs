@@ -1,9 +1,10 @@
-﻿using Caraota.Crypto.State;
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
+
+using Caraota.Crypto.State;
 
 namespace Caraota.NET.Protocol.Stream
 {
-    public class MapleStream
+    public class MapleStream : IDisposable
     {
         private readonly Dictionary<long, MapleBuffer> _starts = [];
         private readonly Dictionary<long, MapleBuffer> _payloads = [];
@@ -92,6 +93,19 @@ namespace Caraota.NET.Protocol.Stream
                 buffer.Dispose();
                 bufferDictionary.Remove(packetId);
             }
+        }
+
+        public void Dispose()
+        {
+            foreach (var b in _starts.Values) b.Dispose();
+            foreach (var b in _payloads.Values) b.Dispose();
+            foreach (var b in _incomingBuffer.Values) b.Dispose();
+            foreach (var b in _outgoingBuffer.Values) b.Dispose();
+
+            _starts.Clear();
+            _payloads.Clear();
+            _incomingBuffer.Clear();
+            _outgoingBuffer.Clear();
         }
     }
 }
