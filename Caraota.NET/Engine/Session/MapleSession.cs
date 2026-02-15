@@ -4,6 +4,7 @@ using Caraota.NET.Protocol.Stream;
 using Caraota.NET.Protocol.Structures;
 
 using Caraota.NET.Infrastructure.Interception;
+using Caraota.NET.Common.Exceptions;
 
 namespace Caraota.NET.Engine.Session;
 
@@ -14,6 +15,7 @@ public interface ISessionState
 
 public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionState, IDisposable
 {
+    public event Action<Exception>? Error;
     public event Action<HandshakeEventArgs>? HandshakeReceived;
     public event Action<MapleSessionViewEventArgs>? PacketDecrypted;
 
@@ -41,11 +43,18 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
         }
 
 
-        if (packet.Opcode == 0 && Initialize(args, payload, out var handshakePacketView))
+        if ((packet.Opcode == 0 || packet.Opcode == 1) && Initialize(args, payload, out var handshakePacketView))
         {
             using var handshakeEventArgs = new HandshakeEventArgs(handshakePacketView);
             HandshakeReceived?.Invoke(handshakeEventArgs);
             return;
+        }
+
+        if(decryptor is null)
+        {
+            var exception = new MapleSessionException("Could not initialize vectors.");
+            Error?.Invoke(exception);
+            throw exception;
         }
 
         if (packet.RequiresContinuation)

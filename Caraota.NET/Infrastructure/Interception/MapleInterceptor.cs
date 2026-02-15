@@ -87,6 +87,7 @@ namespace Caraota.NET.Infrastructure.Interception
             _wrapper.Start();
 
             _session = new MapleSession(_wrapper);
+            _session.Error += (e) => ErrorOcurred?.Invoke(e);
             _session.PacketDecrypted += OnPacketDecrypted;
             _session.HandshakeReceived += OnHandshakeReceived;
         }
