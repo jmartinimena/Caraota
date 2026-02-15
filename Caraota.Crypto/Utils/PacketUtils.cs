@@ -7,7 +7,7 @@ namespace Caraota.Crypto.Utils
     public static class PacketUtils
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public unsafe static int GetLength(ReadOnlySpan<byte> header)
+        public static int GetLength(ReadOnlySpan<byte> header)
         {
             ushort versionMask = BinaryPrimitives.ReadUInt16LittleEndian(header);
             ushort lengthMask = BinaryPrimitives.ReadUInt16LittleEndian(header[2..]);
@@ -36,7 +36,6 @@ namespace Caraota.Crypto.Utils
 
         private static readonly DateTime _startTimeActual = DateTime.Now;
         private static readonly long _startTimeTimestamp = Stopwatch.GetTimestamp();
-
         public static DateTime GetRealTime(long packetTimestamp)
         {
             TimeSpan elapsedSinceStart = Stopwatch.GetElapsedTime(_startTimeTimestamp, packetTimestamp);

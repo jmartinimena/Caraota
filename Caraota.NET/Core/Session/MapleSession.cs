@@ -1,5 +1,4 @@
-﻿using Caraota.NET.Core.Models;
-using Caraota.NET.Common.Events;
+﻿using Caraota.NET.Common.Events;
 using Caraota.NET.Protocol.Stream;
 using Caraota.NET.Common.Exceptions;
 using Caraota.NET.Infrastructure.Interception;
@@ -15,7 +14,7 @@ public interface ISessionState
 public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionState, IDisposable
 {
     public event Action<Exception>? Error;
-    public event Action<HandshakeEventArgs>? HandshakeReceived;
+    public event Action<HandshakePacketViewEventArgs>? HandshakeReceived;
     public event Action<MapleSessionViewEventArgs>? PacketDecrypted;
 
     private MapleSessionException? _mapleSessionEx;
@@ -25,7 +24,7 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
 
     public bool Success => _sessionManager.Success;
 
-    public bool Initialize(WinDivertPacketViewEventArgs winDivertPacket, ReadOnlySpan<byte> payload, out HandshakePacketView handshakePacketView)
+    public bool Initialize(WinDivertPacketViewEventArgs winDivertPacket, ReadOnlySpan<byte> payload, out HandshakePacketViewEventArgs handshakePacketView)
         => _sessionManager.Initialize(winDivertPacket, payload, out handshakePacketView);
 
     public void ProcessRaw(WinDivertPacketViewEventArgs args, Span<byte> payload, long? parentId = null, int? parentReaded = null)
@@ -46,8 +45,7 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
 
         if ((packet.Opcode == 0 || packet.Opcode == 1) && Initialize(args, payload, out var handshakePacketView))
         {
-            using var handshakeEventArgs = new HandshakeEventArgs(handshakePacketView);
-            HandshakeReceived?.Invoke(handshakeEventArgs);
+            HandshakeReceived?.Invoke(handshakePacketView);
             return;
         }
 

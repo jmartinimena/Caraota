@@ -1,8 +1,6 @@
 ﻿using System.Buffers.Binary;
 
 using Caraota.Crypto.State;
-
-using Caraota.NET.Core.Models;
 using Caraota.NET.Common.Events;
 using Caraota.NET.Infrastructure.Interception;
 
@@ -23,7 +21,7 @@ namespace Caraota.NET.Core.Session
 
         private readonly IWinDivertSender _winDivertSender = winDivertSender;
 
-        public bool Initialize(WinDivertPacketViewEventArgs winDivertPacket, ReadOnlySpan<byte> payload, out HandshakePacketView packetView)
+        public bool Initialize(WinDivertPacketViewEventArgs winDivertPacket, ReadOnlySpan<byte> payload, out HandshakePacketViewEventArgs packetView)
         {
             packetView = default;
 
@@ -56,10 +54,10 @@ namespace Caraota.NET.Core.Session
             return false;
         }
 
-        private HandshakePacketView CreateCryptoInstances(WinDivertPacketViewEventArgs args, ReadOnlySpan<byte> payload, ushort version)
+        private HandshakePacketViewEventArgs CreateCryptoInstances(WinDivertPacketViewEventArgs args, ReadOnlySpan<byte> payload, ushort version)
         {
             var mapleSession = new MapleSessionViewEventArgs(args, default);
-            var handshakePacket = new HandshakePacketView(mapleSession, payload);
+            var handshakePacket = new HandshakePacketViewEventArgs(mapleSession, payload);
 
             Encryptor = new MapleCrypto(handshakePacket.SIV, handshakePacket.RIV, version);
             Decryptor = new MapleCrypto(handshakePacket.SIV, handshakePacket.RIV, version);

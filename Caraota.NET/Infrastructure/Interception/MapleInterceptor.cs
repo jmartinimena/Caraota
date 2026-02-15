@@ -14,7 +14,7 @@ namespace Caraota.NET.Infrastructure.Interception
     public sealed class MapleInterceptor : IDisposable
     {
         public event Action<Exception>? ErrorOcurred;
-        public event Action<HandshakeEventArgs>? HandshakeReceived;
+        public event Action<HandshakePacketViewEventArgs>? HandshakeReceived;
 
         public readonly PacketSide Outgoing = new();
         public readonly PacketSide Incoming = new();
@@ -89,7 +89,7 @@ namespace Caraota.NET.Infrastructure.Interception
             _session.HandshakeReceived += OnHandshakeReceived;
         }
 
-        private void OnHandshakeReceived(HandshakeEventArgs args)
+        private void OnHandshakeReceived(HandshakePacketViewEventArgs args)
         {
             HandshakeReceived?.Invoke(args);
         }
