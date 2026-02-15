@@ -4,7 +4,7 @@ using Caraota.NET.Engine.Session;
 
 namespace Caraota.NET.Engine.Monitoring
 {
-    public class MapleSessionMonitor
+    public class MapleSessionMonitor : IDisposable
     {
         public event Action? Disconnected;
 

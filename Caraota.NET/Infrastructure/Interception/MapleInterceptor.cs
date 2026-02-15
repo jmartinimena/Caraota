@@ -141,6 +141,9 @@ namespace Caraota.NET.Infrastructure.Interception
 
             _wrapper.Dispose();
             _session.Dispose();
+            Outgoing.Dispose();
+            Incoming.Dispose();
+            SessionMonitor.Dispose();
             GC.SuppressFinalize(this);
         }
     }
