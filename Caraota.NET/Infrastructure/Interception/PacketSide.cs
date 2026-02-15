@@ -73,6 +73,8 @@ namespace Caraota.NET.Infrastructure.Interception
             _cts.Cancel();
             _handlers.Clear();
             _cts.Dispose();
+
+            GC.SuppressFinalize(this);
         }
     }
 }

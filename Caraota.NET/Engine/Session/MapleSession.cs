@@ -43,7 +43,8 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
 
         if (packet.Opcode == 0 && Initialize(args, payload, out var handshakePacketView))
         {
-            HandshakeReceived?.Invoke(new HandshakeEventArgs(handshakePacketView));
+            using var handshakeEventArgs = new HandshakeEventArgs(handshakePacketView);
+            HandshakeReceived?.Invoke(handshakeEventArgs);
             return;
         }
 
@@ -105,5 +106,6 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
     public void Dispose()
     {
         _stream.Dispose();
+        GC.SuppressFinalize(this);
     }
 }

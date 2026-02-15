@@ -19,6 +19,8 @@ namespace Caraota.NET.Protocol.Stream
             {
                 ArrayPool<byte>.Shared.Return(Buffer);
             }
+
+            GC.SuppressFinalize(this);
         }
     }
 }

@@ -8,7 +8,6 @@ using Caraota.NET.Common.Attributes;
 
 using Caraota.NET.Engine.Logic;
 using Caraota.NET.Engine.Session;
-using Caraota.NET.Engine.Monitoring;
 
 using Caraota.NET.Infrastructure.TCP;
 
@@ -22,7 +21,6 @@ namespace Caraota.NET.Infrastructure.Interception
         public readonly PacketSide Outgoing = new();
         public readonly PacketSide Incoming = new();
         public readonly HijackManager HijackManager = new();
-        public readonly MapleSessionMonitor SessionMonitor = new();
 
         private MapleSession _session = default!;
         private WinDivertWrapper _wrapper = default!;
@@ -91,8 +89,6 @@ namespace Caraota.NET.Infrastructure.Interception
             _session = new MapleSession(_wrapper);
             _session.PacketDecrypted += OnPacketDecrypted;
             _session.HandshakeReceived += OnHandshakeReceived;
-
-            SessionMonitor.Start(_session);
         }
 
         private void OnHandshakeReceived(HandshakeEventArgs args)
@@ -103,9 +99,6 @@ namespace Caraota.NET.Infrastructure.Interception
         private void OnPacketReceived(WinDivertPacketViewEventArgs args)
         {
             //_sw.Restart();
-
-            SessionMonitor.LastPacketInterceptedTime = Stopwatch.GetTimestamp();
-
             if (!TcpHelper.TryExtractPayload(args.Packet,
                 out Span<byte> payload)) return;
             
@@ -143,7 +136,7 @@ namespace Caraota.NET.Infrastructure.Interception
             _session.Dispose();
             Outgoing.Dispose();
             Incoming.Dispose();
-            SessionMonitor.Dispose();
+
             GC.SuppressFinalize(this);
         }
     }

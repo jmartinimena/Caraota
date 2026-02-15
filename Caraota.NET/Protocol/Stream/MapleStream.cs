@@ -106,6 +106,8 @@ namespace Caraota.NET.Protocol.Stream
             _payloads.Clear();
             _incomingBuffer.Clear();
             _outgoingBuffer.Clear();
+
+            GC.SuppressFinalize(this);
         }
     }
 }

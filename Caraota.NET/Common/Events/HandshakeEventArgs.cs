@@ -17,11 +17,13 @@ namespace Caraota.NET.Common.Events
         public ReadOnlySpan<byte> Packet { get; }
         public ReadOnlySpan<byte> SIV { get; }
         public ReadOnlySpan<byte> RIV { get; }
+        public long Timestamp { get; }
 
         public HandshakePacketView(MapleSessionViewEventArgs mapleSessionEventArgs, ReadOnlySpan<byte> packet)
         {
             Packet = packet;
             MapleSessionEventArgs = mapleSessionEventArgs;
+            Timestamp = mapleSessionEventArgs.Address.Timestamp;
 
             var version = BinaryPrimitives.ReadUInt16LittleEndian(packet.Slice(2, 2));
             if (version != 62)
@@ -47,7 +49,8 @@ namespace Caraota.NET.Common.Events
         private readonly int _rivOffset;
         private readonly int _localeOffset;
 
-        public readonly ushort Opcode = 0;
+        public readonly ushort Opcode;
+        private readonly long Timestamp;
         public readonly ReadOnlyMemory<byte> Payload => _fullBuffer.AsMemory(0, _dataLen);
         public readonly ReadOnlyMemory<byte> SIV => _fullBuffer.AsMemory(_sivOffset, _sivLen);
         public readonly ReadOnlyMemory<byte> RIV => _fullBuffer.AsMemory(_rivOffset, _rivLen);
@@ -55,8 +58,7 @@ namespace Caraota.NET.Common.Events
         public readonly ushort SubVersion => BinaryPrimitives.ReadUInt16LittleEndian(Payload.Span[4..]);
         public readonly byte Locale => Payload.Span[_localeOffset];
 
-        private readonly long _timestamp = Stopwatch.GetTimestamp();
-        public readonly string FormattedTime => PacketUtils.GetRealTime(_timestamp).ToString("HH:mm:ss:fff");
+        public readonly string FormattedTime => PacketUtils.GetRealTime(Timestamp).ToString("HH:mm:ss:fff");
 
         public HandshakeEventArgs(HandshakePacketView args)
         {
@@ -68,6 +70,8 @@ namespace Caraota.NET.Common.Events
             _fullBuffer = ArrayPool<byte>.Shared.Rent(_dataLen);
 
             args.Packet.CopyTo(_fullBuffer.AsSpan(0, _dataLen));
+
+            Timestamp = args.Timestamp;
         }
 
         public void Dispose()
