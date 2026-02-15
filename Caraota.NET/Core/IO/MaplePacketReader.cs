@@ -3,6 +3,7 @@ using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 
 using Caraota.Crypto.State;
+using Caraota.NET.Core.Models.Views;
 
 namespace Caraota.NET.Core.IO
 {
@@ -20,6 +21,7 @@ namespace Caraota.NET.Core.IO
             _payload = maplePacket.Payload[2..];
         }
 
+        public readonly bool IsEmpty() => _payload.IsEmpty;
         public bool ReadBoolean(int? position = null)
         {
             int pos = UpdatePosition<bool>(position);

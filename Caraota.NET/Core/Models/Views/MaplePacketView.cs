@@ -1,8 +1,9 @@
 ﻿using System.Buffers.Binary;
 
 using Caraota.Crypto.Utils;
+using Caraota.NET.Core.IO;
 
-namespace Caraota.Crypto.State
+namespace Caraota.NET.Core.Models.Views
 {
     /// <summary>
     /// Representa una vista de alto rendimiento sobre un paquete de MapleStory.
@@ -11,6 +12,9 @@ namespace Caraota.Crypto.State
     /// </summary>
     public ref struct MaplePacketView
     {
+        private MaplePacketReader _reader;
+        private MaplePacketWriter _writer;
+
         private static long _counter = 0;
         /// <summary> Identificador único del paquete basado en el timestamp de alta resolución. </summary>
         public long Id { get; init; }
@@ -78,5 +82,27 @@ namespace Caraota.Crypto.State
             Data = data[..totalProcessed];
             Leftovers = data[totalProcessed..];
         }
+
+        public MaplePacketReader GetReader()
+        {
+            if(_reader.IsEmpty())
+            {
+                _reader = new MaplePacketReader(this);
+            }
+
+            return _reader;
+        }
+
+        public MaplePacketWriter GetWritter()
+        {
+            if(_writer.IsEmpty())
+            {
+                _writer = new MaplePacketWriter(this);
+            }
+
+            return _writer;
+        }
+
+        public readonly void Release() => _writer.Release();
     }
 }

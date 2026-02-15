@@ -3,12 +3,12 @@ using System.Buffers;
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 
-using Caraota.Crypto.State;
+using Caraota.NET.Core.Models.Views;
 
 namespace Caraota.NET.Core.IO
 {
     // TODO: Debes deslizar los valores antes de la escritura
-    public ref struct MaplePacketWriter : IDisposable
+    public ref struct MaplePacketWriter
     {
         private int _position;
         private Span<byte> _payload;
@@ -22,6 +22,8 @@ namespace Caraota.NET.Core.IO
         {
             _payload = maplePacket.Payload[2..];
         }
+
+        public readonly bool IsEmpty() => _payload.IsEmpty;
 
         public void WriteBoolean(bool value, int? position = null)
         {
@@ -102,8 +104,10 @@ namespace Caraota.NET.Core.IO
             return pos;
         }
 
-        public readonly void Dispose()
+        internal readonly void Release()
         {
+            if (_payloadBuffer == null) return;
+
             ArrayPool<byte>.Shared.Return(_payloadBuffer);
         }
     }

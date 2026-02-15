@@ -47,27 +47,25 @@ namespace Caraota.Crypto.State
             AES.StartAes(key);
         }
 
-        public void Encrypt(ref MaplePacketView packet)
+        public void Encrypt(Span<byte> payload, bool isIncoming, bool requiresContinuation = false)
         {
-            var payload = packet.Payload;
-            var iv = packet.IsIncoming ? RIV : SIV;
+            var iv = isIncoming ? RIV : SIV;
 
             Shanda.Encrypt(payload);
             AES.EncryptDecrypt(payload, iv);
 
-            if (!packet.RequiresContinuation)
+            if (!requiresContinuation)
                 Update(iv);
         }
 
-        public void Decrypt(ref MaplePacketView packet)
+        public void Decrypt(Span<byte> payload, bool isIncoming, bool requiresContinuation = false)
         {
-            var payload = packet.Payload;
-            var iv = packet.IsIncoming ? RIV : SIV;
+            var iv = isIncoming ? RIV : SIV;
 
             AES.EncryptDecrypt(payload, iv);
             Shanda.Decrypt(payload);
 
-            if (!packet.RequiresContinuation)
+            if (!requiresContinuation)
                 Update(iv);
         }
 
@@ -116,14 +114,14 @@ namespace Caraota.Crypto.State
         }
 
         [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
-        public static bool Validate(MaplePacketView packet, ReadOnlySpan<byte> iv)
+        public static bool Validate(ReadOnlySpan<byte> header, ReadOnlySpan<byte> iv, bool isIncoming)
         {
-            if (packet.Header.Length < 4) return false;
+            if (header.Length < 4) return false;
 
-            int expectedA = packet.IsIncoming ? -(Version + 1) : Version;
+            int expectedA = isIncoming ? -(Version + 1) : Version;
 
-            bool isValid = (packet.Header[0] ^ iv[2]) == (byte)(expectedA & 0xFF) &&
-                           (packet.Header[1] ^ iv[3]) == (byte)((expectedA >> 8) & 0xFF);
+            bool isValid = (header[0] ^ iv[2]) == (byte)(expectedA & 0xFF) &&
+                           (header[1] ^ iv[3]) == (byte)((expectedA >> 8) & 0xFF);
 
             return isValid;
         }

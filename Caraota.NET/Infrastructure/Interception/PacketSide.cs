@@ -1,6 +1,7 @@
 ﻿using System.Threading.Channels;
 using Caraota.Crypto.State;
 using Caraota.NET.Common.Events;
+using Caraota.NET.Core.Models.Views;
 
 namespace Caraota.NET.Infrastructure.Interception
 {

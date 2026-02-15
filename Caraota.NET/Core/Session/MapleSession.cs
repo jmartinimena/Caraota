@@ -1,8 +1,10 @@
-﻿using Caraota.NET.Common.Events;
+﻿using Caraota.NET.Protocol.Stream;
+using Caraota.NET.Protocol.Parsing;
+
+using Caraota.NET.Common.Events;
 using Caraota.NET.Common.Exceptions;
 
-using Caraota.NET.Protocol.Stream;
-using Caraota.NET.Protocol.Parsing;
+using Caraota.NET.Core.Models.Views;
 
 using Caraota.NET.Infrastructure.Interception;
 
@@ -39,7 +41,7 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : IDisposable
             return;
         }
 
-        if(decryptor is null)
+        if (decryptor is null)
         {
             var exception = new MapleSessionException("Could not initialize vectors.");
             Error?.Invoke(exception);
@@ -52,7 +54,7 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : IDisposable
             _stream.SaveForContinuation(packet.Id, packet.Data);
         }
 
-        decryptor!.Decrypt(ref packet);
+        Decrypt(ref packet);
         PacketDecrypted?.Invoke(new MapleSessionViewEventArgs(args, packet));
 
         if (packet.Leftovers.Length == 0) return;
@@ -73,8 +75,7 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : IDisposable
 
         var outBuffer = _stream.GetOrCreateBuffer(packet.Id, packet.TotalLength - packet.ContinuationLength, packet.IsIncoming);
 
-        var encryptor = _sessionManager.Encryptor;
-        encryptor.Encrypt(ref packet);
+        Encrypt(ref packet);
 
         packet.Data[packet.ContinuationLength..].CopyTo(outBuffer.AsSpan(packet.ParentReaded));
 
@@ -84,22 +85,36 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : IDisposable
 
             if (finalData is null) return;
 
-            if (finalData != null)
-            {
-                winDivertSender.ReplaceAndSend(finalData.Value.AsSpan(), args.DivertPacketView, args.Address);
-                _stream.CleanPayload(packet.Id);
-            }
+            ReplaceAndAsend(finalData.Value.AsSpan(), args);
+
+            packet.Release();
+            _stream.CleanPayload(packet.Id);
         }
     }
 
     private void EncryptAndSend(MapleSessionViewEventArgs args)
     {
         var packet = args.MaplePacketView;
-        var destination = args.DivertPacketView;
-        var address = args.Address;
 
-        _sessionManager.Encryptor.Encrypt(ref packet);
-        winDivertSender.ReplaceAndSend(packet.Data[packet.ContinuationLength..], destination, address);
+        Encrypt(ref packet);
+        ReplaceAndAsend(packet.Data[packet.ContinuationLength..], args);
+
+        packet.Release();
+    }
+
+    public void Encrypt(ref MaplePacketView packet)
+    {
+        _sessionManager.Encryptor.Encrypt(packet.Payload, packet.IsIncoming, packet.RequiresContinuation);
+    }
+
+    public void Decrypt(ref MaplePacketView packet)
+    {
+        _sessionManager.Decryptor.Decrypt(packet.Payload, packet.IsIncoming, packet.RequiresContinuation);
+    }
+
+    public void ReplaceAndAsend(ReadOnlySpan<byte> payload, MapleSessionViewEventArgs args)
+    {
+        winDivertSender.ReplaceAndSend(payload, args.DivertPacketView, args.Address);
     }
 
     public void Dispose()

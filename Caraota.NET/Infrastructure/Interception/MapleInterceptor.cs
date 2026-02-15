@@ -10,6 +10,7 @@ using Caraota.NET.Core.Session;
 
 using Caraota.NET.Infrastructure.TCP;
 using Caraota.Crypto.State;
+using Caraota.NET.Core.Models.Views;
 
 namespace Caraota.NET.Infrastructure.Interception
 {

@@ -1,6 +1,7 @@
 ﻿using WinDivertSharp;
 
 using Caraota.Crypto.State;
+using Caraota.NET.Core.Models.Views;
 
 namespace Caraota.NET.Common.Events
 {

@@ -4,6 +4,6 @@
     {
         public byte[] SIV { get; }
         public byte[] RIV { get; }
-        void Decrypt(ref MaplePacketView packet);
+        void Decrypt(Span<byte> payload, bool isIncoming, bool requiresContinuation = false);
     }
 }

@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using Caraota.Crypto.State;
-using Caraota.NET.Core.Models;
+using Caraota.NET.Core.Models.Structure;
+using Caraota.NET.Core.Models.Views;
 
 namespace Caraota.NET.Protocol.Parsing
 {

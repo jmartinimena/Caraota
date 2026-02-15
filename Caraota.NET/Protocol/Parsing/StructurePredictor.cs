@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Buffers.Binary;
 
 using Caraota.Crypto.State;
+using Caraota.NET.Core.Models.Views;
 
 namespace Caraota.NET.Protocol.Parsing
 {

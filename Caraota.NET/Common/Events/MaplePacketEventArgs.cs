@@ -1,4 +1,4 @@
-﻿using Caraota.NET.Core.Models;
+﻿using Caraota.NET.Core.Models.Structure;
 
 namespace Caraota.NET.Common.Events
 {

@@ -1,11 +1,10 @@
 ﻿using System.Buffers;
-
 using Caraota.Crypto.State;
 using Caraota.Crypto.Utils;
-
 using Caraota.NET.Core.IO;
+using Caraota.NET.Core.Models.Views;
 
-namespace Caraota.NET.Core.Models
+namespace Caraota.NET.Core.Models.Structure
 {
     public readonly struct MaplePacket : IDisposable
     {

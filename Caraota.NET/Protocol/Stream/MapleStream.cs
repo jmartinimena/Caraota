@@ -1,6 +1,7 @@
 ﻿using System.Runtime.CompilerServices;
 
 using Caraota.Crypto.State;
+using Caraota.NET.Core.Models.Views;
 
 namespace Caraota.NET.Protocol.Stream
 {
