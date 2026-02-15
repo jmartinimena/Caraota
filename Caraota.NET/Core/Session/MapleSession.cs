@@ -1,31 +1,21 @@
 ﻿using Caraota.NET.Common.Events;
-using Caraota.NET.Protocol.Stream;
 using Caraota.NET.Common.Exceptions;
-using Caraota.NET.Infrastructure.Interception;
+
+using Caraota.NET.Protocol.Stream;
 using Caraota.NET.Protocol.Parsing;
+
+using Caraota.NET.Infrastructure.Interception;
 
 namespace Caraota.NET.Core.Session;
 
-public interface ISessionState
-{
-    public bool Success { get; }
-}
-
-public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionState, IDisposable
+public sealed class MapleSession(IWinDivertSender winDivertSender) : IDisposable
 {
     public event Action<Exception>? Error;
-    public event Action<HandshakePacketViewEventArgs>? HandshakeReceived;
     public event Action<MapleSessionViewEventArgs>? PacketDecrypted;
-
-    private MapleSessionException? _mapleSessionEx;
+    public event Action<HandshakePacketViewEventArgs>? HandshakeReceived;
 
     private readonly MapleStream _stream = new();
     private readonly MapleSessionManager _sessionManager = new(winDivertSender);
-
-    public bool Success => _sessionManager.Success;
-
-    public bool Initialize(WinDivertPacketViewEventArgs winDivertPacket, ReadOnlySpan<byte> payload, out HandshakePacketViewEventArgs handshakePacketView)
-        => _sessionManager.Initialize(winDivertPacket, payload, out handshakePacketView);
 
     public void ProcessRaw(WinDivertPacketViewEventArgs args, Span<byte> payload, long? parentId = null, int? parentReaded = null)
     {
@@ -43,7 +33,7 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
         }
 
 
-        if ((packet.Opcode == 0 || packet.Opcode == 1) && Initialize(args, payload, out var handshakePacketView))
+        if ((packet.Opcode == 0 || packet.Opcode == 1) && _sessionManager.Initialize(args, payload, out var handshakePacketView))
         {
             HandshakeReceived?.Invoke(handshakePacketView);
             return;
@@ -51,10 +41,10 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
 
         if(decryptor is null)
         {
-            if (_mapleSessionEx is not null) return;
-
             var exception = new MapleSessionException("Could not initialize vectors.");
             Error?.Invoke(exception);
+
+            return;
         }
 
         if (packet.RequiresContinuation)
@@ -96,7 +86,7 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
 
             if (finalData != null)
             {
-                winDivertSender.ReplaceAndSend(args.DivertPacketView, finalData.Value.AsSpan(), args.Address);
+                winDivertSender.ReplaceAndSend(finalData.Value.AsSpan(), args.DivertPacketView, args.Address);
                 _stream.CleanPayload(packet.Id);
             }
         }
@@ -105,11 +95,11 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : ISessionSta
     private void EncryptAndSend(MapleSessionViewEventArgs args)
     {
         var packet = args.MaplePacketView;
-        var original = args.DivertPacketView;
+        var destination = args.DivertPacketView;
         var address = args.Address;
 
         _sessionManager.Encryptor.Encrypt(ref packet);
-        winDivertSender.ReplaceAndSend(original, packet.Data[packet.ContinuationLength..], address);
+        winDivertSender.ReplaceAndSend(packet.Data[packet.ContinuationLength..], destination, address);
     }
 
     public void Dispose()

@@ -1,13 +1,16 @@
-﻿using System.Buffers.Binary;
+﻿using System.Buffers;
+using System.Buffers.Binary;
 
 namespace Caraota.NET.Infrastructure.TCP
 {
-    public sealed class TcpStackArchitect
+    public sealed class TcpStackArchitect : IDisposable
     {
         private ushort _fakeSeq = 0, _fakeAck = 0;
-        public unsafe void ReplacePayload(Span<byte> tcpPacket, ReadOnlySpan<byte> payload, bool isIncoming)
+        private readonly byte[] _tcpBuffer = ArrayPool<byte>.Shared.Rent(65536);
+
+        public unsafe void ReplacePayload(ReadOnlySpan<byte> payload, Span<byte> destination, bool isIncoming)
         {
-            fixed (byte* pPacket = tcpPacket)
+            fixed (byte* pPacket = destination)
             {
                 int ipH = (*pPacket & 0x0F) << 2;
 
@@ -16,7 +19,13 @@ namespace Caraota.NET.Infrastructure.TCP
                 int totalHeader = ipH + tcpH;
                 int totalSize = totalHeader + payload.Length;
 
-                payload.CopyTo(tcpPacket[totalHeader..]);
+                if(totalSize > destination.Length)
+                {
+                    destination[..totalHeader].CopyTo(_tcpBuffer);
+                    destination = _tcpBuffer.AsSpan(0, totalSize);
+                }
+
+                payload.CopyTo(destination[totalHeader..]);
 
                 uint* pSeqPtr = (uint*)(pPacket + ipH + 4);
                 uint* pAckPtr = (uint*)(pPacket + ipH + 8);
@@ -24,7 +33,7 @@ namespace Caraota.NET.Infrastructure.TCP
                 uint currentSeq = BinaryPrimitives.ReverseEndianness(*pSeqPtr);
                 uint currentAck = BinaryPrimitives.ReverseEndianness(*pAckPtr);
 
-                ushort delta = (ushort)Math.Abs(tcpPacket.Length - totalSize);
+                ushort delta = (ushort)Math.Abs(destination.Length - totalSize);
                 uint finalSeq, finalAck;
 
                 if (isIncoming)
@@ -45,6 +54,12 @@ namespace Caraota.NET.Infrastructure.TCP
 
                 *(ushort*)(pPacket + 2) = BinaryPrimitives.ReverseEndianness((ushort)totalSize);
             }
+        }
+
+        public void Dispose()
+        {
+            ArrayPool<byte>.Shared.Return(_tcpBuffer);
+            GC.SuppressFinalize(this);
         }
     }
 }

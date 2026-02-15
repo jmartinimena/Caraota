@@ -64,7 +64,7 @@ namespace Caraota.NET.Core.Session
 
             Success = true;
 
-            _winDivertSender.ReplaceAndSend(args.Packet, payload, args.Address);
+            _winDivertSender.ReplaceAndSend(payload, args.Packet, args.Address);
 
             return handshakePacket;
         }

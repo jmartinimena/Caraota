@@ -2,22 +2,22 @@
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 
-using Caraota.NET.Core.Models;
+using Caraota.Crypto.State;
 
 namespace Caraota.NET.Core.IO
 {
     public ref struct MaplePacketReader
     {
-        private int _readerPos;
+        private int _position;
         private readonly ReadOnlySpan<byte> _payload;
         public MaplePacketReader(ReadOnlySpan<byte> payload)
         {
             _payload = payload;
         }
 
-        public MaplePacketReader(MaplePacket maplePacket)
+        public MaplePacketReader(MaplePacketView maplePacket)
         {
-            _payload = maplePacket.Payload.Span[2..];
+            _payload = maplePacket.Payload[2..];
         }
 
         public bool ReadBoolean(int? position = null)
@@ -72,12 +72,11 @@ namespace Caraota.NET.Core.IO
             return Encoding.ASCII.GetString(_payload.Slice(stringPos, len));
         }
 
-        private int UpdatePosition<T>(int? position = 0, int? len = 0) where T : struct 
+        private readonly int UpdatePosition<T>(int? position = 0, int? len = 0) where T : struct
         {
-            int pos = position ?? _readerPos;
+            int pos = position ?? _position;
 
-            if (position is null)
-                _readerPos += len ?? Unsafe.SizeOf<T>();
+            pos += len ?? Unsafe.SizeOf<T>();
 
             return pos;
         }

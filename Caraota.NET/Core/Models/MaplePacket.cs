@@ -1,6 +1,8 @@
 ﻿using System.Buffers;
+
 using Caraota.Crypto.State;
 using Caraota.Crypto.Utils;
+
 using Caraota.NET.Core.IO;
 
 namespace Caraota.NET.Core.Models
@@ -27,7 +29,7 @@ namespace Caraota.NET.Core.Models
         public readonly string ToHexString() => Convert.ToHexString(Data.Span);
         public readonly string FormattedTime => PacketUtils.GetRealTime(Timestamp).ToString("HH:mm:ss:fff");
 
-        public unsafe MaplePacket(MaplePacketView maplePacket)
+        public MaplePacket(MaplePacketView maplePacket)
         {
             Timestamp = maplePacket.Timestamp;
             _dataLen = maplePacket.Data.Length;
@@ -43,8 +45,6 @@ namespace Caraota.NET.Core.Models
             maplePacket.Data.CopyTo(destSpan);
             maplePacket.IV.CopyTo(destSpan[_dataLen..]);
         }
-
-        public MaplePacketReader GetReader() => new(this);
 
         public void Dispose()
         {

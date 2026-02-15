@@ -1,5 +1,5 @@
 ﻿using System.Threading.Channels;
-
+using Caraota.Crypto.State;
 using Caraota.NET.Common.Events;
 
 namespace Caraota.NET.Infrastructure.Interception
@@ -9,7 +9,7 @@ namespace Caraota.NET.Infrastructure.Interception
         public event Action<MaplePacketEventArgs>? Received;
 
         private readonly CancellationTokenSource _cts = new();
-        private readonly Dictionary<ushort, Action<MaplePacketEventArgs>> _handlers = [];
+        private readonly Dictionary<ushort, Action<MaplePacketView>> _handlers = [];
         private readonly Channel<MaplePacketEventArgs> _channel = Channel.CreateBounded<MaplePacketEventArgs>(new BoundedChannelOptions(10000)
         {
             FullMode = BoundedChannelFullMode.DropOldest,
@@ -44,7 +44,7 @@ namespace Caraota.NET.Infrastructure.Interception
             _channel.Writer.TryWrite(packet);
         }
 
-        public bool Register(ushort opcode, Action<MaplePacketEventArgs> action)
+        public bool Register(ushort opcode, Action<MaplePacketView> action)
         {
             return _handlers.TryAdd(opcode, action);
         }
@@ -54,7 +54,7 @@ namespace Caraota.NET.Infrastructure.Interception
             return _handlers.Remove(opcode);
         }
 
-        internal bool TryGetFunc(ushort opcode, out Action<MaplePacketEventArgs> action)
+        internal bool TryGetFunc(ushort opcode, out Action<MaplePacketView> action)
         {
             return _handlers.TryGetValue(opcode, out action!);
         }

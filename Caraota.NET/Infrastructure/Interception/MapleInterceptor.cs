@@ -7,7 +7,9 @@ using Caraota.NET.Common.Events;
 using Caraota.NET.Common.Attributes;
 
 using Caraota.NET.Core.Session;
+
 using Caraota.NET.Infrastructure.TCP;
+using Caraota.Crypto.State;
 
 namespace Caraota.NET.Infrastructure.Interception
 {
@@ -48,8 +50,8 @@ namespace Caraota.NET.Infrastructure.Interception
                 try
                 {
                     object? finalTarget = h.Method.IsStatic ? null : target;
-                    var handlerDelegate = (Action<MaplePacketEventArgs>)Delegate.CreateDelegate(
-                        typeof(Action<MaplePacketEventArgs>), finalTarget, h.Method);
+                    var handlerDelegate = (Action<MaplePacketView>)Delegate.CreateDelegate(
+                        typeof(Action<MaplePacketView>), finalTarget, h.Method);
 
                     Outgoing.Register(h.Attr!.Opcode, handlerDelegate);
                 }
@@ -109,7 +111,7 @@ namespace Caraota.NET.Infrastructure.Interception
             var packetSide = args.MaplePacketView.IsIncoming ? Incoming : Outgoing;
 
             if (packetSide.TryGetFunc(args.MaplePacketView.Opcode, out var func))
-                func?.Invoke(maplePacketEventArgs);
+                func?.Invoke(args.MaplePacketView);
 
             if (!args.MaplePacketView.RequiresContinuation)
                 packetSide.Dispatch(maplePacketEventArgs);

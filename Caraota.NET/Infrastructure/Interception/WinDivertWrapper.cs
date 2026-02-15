@@ -10,7 +10,7 @@ using WinDivertSharp;
 using Caraota.NET.Common.Utils;
 using Caraota.NET.Common.Events;
 using Caraota.NET.Infrastructure.TCP;
-using System.Text;
+using System.Buffers;
 
 namespace Caraota.NET.Infrastructure.Interception
 {
@@ -164,12 +164,12 @@ namespace Caraota.NET.Infrastructure.Interception
             }
         }
 
-        public void ReplaceAndSend(Span<byte> original, ReadOnlySpan<byte> payload, WinDivertAddress address)
+        public void ReplaceAndSend(ReadOnlySpan<byte> payload, Span<byte> destination, WinDivertAddress address)
         {
             bool isIncoming = address.Direction == WinDivertDirection.Inbound;
-            _tcpStackArchitect.ReplacePayload(original, payload, isIncoming);
+            _tcpStackArchitect.ReplacePayload(payload, destination, isIncoming);
 
-            SendPacket(original, address);
+            SendPacket(destination, address);
         }
 
         public void Stop()
@@ -188,6 +188,7 @@ namespace Caraota.NET.Infrastructure.Interception
         public void Dispose()
         {
             Stop();
+            _tcpStackArchitect.Dispose();
             GC.SuppressFinalize(this);
         }
     }
