@@ -99,7 +99,7 @@ namespace Caraota.NET.Infrastructure.Interception
                 .Where(x => x.Attr != null);
 
             foreach (var h in outgoingHandlers)
-            {
+            {   
                 try
                 {
                     object? finalTarget = h.Method.IsStatic ? null : target;

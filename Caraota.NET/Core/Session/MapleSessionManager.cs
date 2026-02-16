@@ -1,7 +1,9 @@
-﻿using System.Buffers.Binary;
+﻿using Caraota.Crypto.State;
 
-using Caraota.Crypto.State;
 using Caraota.NET.Common.Events;
+
+using Caraota.NET.Core.Models.Views;
+
 using Caraota.NET.Infrastructure.Interception;
 
 namespace Caraota.NET.Core.Session
@@ -21,13 +23,15 @@ namespace Caraota.NET.Core.Session
 
         private readonly IWinDivertSender _winDivertSender = winDivertSender;
 
-        public bool Initialize(WinDivertPacketViewEventArgs winDivertPacket, ReadOnlySpan<byte> payload, out HandshakePacketViewEventArgs packetView)
+        public bool Initialize(WinDivertPacketViewEventArgs winDivertPacket, MaplePacketView packet, out HandshakePacketViewEventArgs packetView)
         {
+            packet.SetAsRaw();
+
             packetView = default;
 
-            if (TryGetVersion(payload, out ushort version))
+            if (IsHandshakePacket(packet) && TryGetVersion(packet, out ushort version))
             {
-                packetView = CreateCryptoInstances(winDivertPacket, payload, version);
+                packetView = CreateCryptoInstances(winDivertPacket, packet, version);
 
                 return true;
             }
@@ -35,17 +39,20 @@ namespace Caraota.NET.Core.Session
             return false;
         }
 
-        private static bool TryGetVersion(ReadOnlySpan<byte> data, out ushort version)
+        private static bool IsHandshakePacket(MaplePacketView packet)
+        => packet.Opcode is 13 or 14;
+
+        private static bool TryGetVersion(MaplePacketView packet, out ushort version)
         {
             version = 0;
 
-            switch (data.Length)
+            switch (packet.Data.Length)
             {
                 case HANDSHAKE_V82_LENGTH:
                 case HANDSHAKE_V62_LENGTH:
-                    if (data.Length >= VERSION_OFFSET + VERSION_SIZE)
+                    if (packet.Data.Length >= VERSION_OFFSET + VERSION_SIZE)
                     {
-                        version = BinaryPrimitives.ReadUInt16LittleEndian(data.Slice(VERSION_OFFSET, VERSION_SIZE));
+                        version = packet.Read<ushort>(2);
                         return version <= MAX_VERSION;
                     }
                     break;
@@ -54,17 +61,17 @@ namespace Caraota.NET.Core.Session
             return false;
         }
 
-        private HandshakePacketViewEventArgs CreateCryptoInstances(WinDivertPacketViewEventArgs args, ReadOnlySpan<byte> payload, ushort version)
+        private HandshakePacketViewEventArgs CreateCryptoInstances(WinDivertPacketViewEventArgs args, MaplePacketView packet, ushort version)
         {
-            var mapleSession = new MapleSessionViewEventArgs(args, default);
-            var handshakePacket = new HandshakePacketViewEventArgs(mapleSession, payload);
+            var mapleSession = new MapleSessionViewEventArgs(args, packet);
+            var handshakePacket = new HandshakePacketViewEventArgs(mapleSession);
 
             Encryptor = new MapleCrypto(handshakePacket.SIV, handshakePacket.RIV, version);
             Decryptor = new MapleCrypto(handshakePacket.SIV, handshakePacket.RIV, version);
 
             Success = true;
 
-            _winDivertSender.ReplaceAndSend(payload, args.Packet, args.Address);
+            _winDivertSender.SendPacket(args.Packet, args.Address);
 
             return handshakePacket;
         }

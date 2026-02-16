@@ -1,7 +1,8 @@
 ﻿using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
-using Caraota.NET.Common.Utils;
+
 using Caraota.NET.IO;
+using Caraota.NET.Common.Utils;
 
 namespace Caraota.NET.Core.Models.Views
 {
@@ -83,9 +84,14 @@ namespace Caraota.NET.Core.Models.Views
             Leftovers = data[totalProcessed..];
         }
 
+        public void SetAsRaw()
+        {
+            Payload = Data;
+        }
+
         public T Read<T>(int? pos = null) where T : unmanaged
         {
-            var result = LittleEndian.Read<T>(Payload[2..], pos ?? _readOffset);
+            var result = LittleEndian.Read<T>(Payload, pos ?? _readOffset);
 
             if (!pos.HasValue)
             {
@@ -98,7 +104,7 @@ namespace Caraota.NET.Core.Models.Views
 
         public string ReadString(int? pos = null)
         {
-            var result = LittleEndian.ReadString(Payload[2..], pos ?? _readOffset);
+            var result = LittleEndian.ReadString(Payload, pos ?? _readOffset);
 
             if(!pos.HasValue)
             {
@@ -109,9 +115,14 @@ namespace Caraota.NET.Core.Models.Views
             return result;
         }
 
+        public readonly ReadOnlySpan<byte> ReadBytes(int start, int len)
+        {
+            return LittleEndian.ReadBytes(Payload, start, len);
+        }
+
         public void Write<T>(T value, int? pos = null) where T : unmanaged
         {
-            LittleEndian.Write(Payload[2..], value, pos ?? _writeOffset);
+            LittleEndian.Write(Payload, value, pos ?? _writeOffset);
 
             if(!pos.HasValue)
             {

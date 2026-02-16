@@ -1,12 +1,10 @@
-﻿using Caraota.NET.Protocol.Stream;
-using Caraota.NET.Protocol.Parsing;
-
+﻿using Caraota.Crypto.State;
 using Caraota.NET.Common.Events;
 using Caraota.NET.Common.Exceptions;
-
 using Caraota.NET.Core.Models.Views;
-
 using Caraota.NET.Infrastructure.Interception;
+using Caraota.NET.Protocol.Parsing;
+using Caraota.NET.Protocol.Stream;
 
 namespace Caraota.NET.Core.Session;
 
@@ -21,46 +19,28 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : IDisposable
 
     public void ProcessPayload(WinDivertPacketViewEventArgs args, Span<byte> payload, long? parentId = null, int? parentReaded = null)
     {
-        var decryptor = _sessionManager.Decryptor;
+        var iv = GetIV(args.IsIncoming);
 
-        var iv = args.IsIncoming ? decryptor?.RIV : decryptor?.SIV;
-        var packet = PacketFactory.Parse(payload, iv, args.IsIncoming, args.Address.Timestamp, parentId, parentReaded);
-
+        var packet = ParsePacket(payload, iv, args, parentId, parentReaded);
         var unifiedPayload = _stream.GetUnifiedPayload(packet.Id, payload, out int contLen);
 
         if (contLen > 0)
         {
-            packet = PacketFactory.Parse(unifiedPayload, iv, args.IsIncoming, args.Address.Timestamp, packet.Id, packet.ParentReaded);
+            packet = ParsePacket(unifiedPayload, iv, args, packet.Id, packet.ParentReaded);
             packet.ContinuationLength = contLen;
         }
 
-
-        if ((packet.Opcode == 0 || packet.Opcode == 1) && _sessionManager.Initialize(args, payload, out var handshakePacketView))
+        if (_sessionManager.Initialize(args, packet, out var handshakePacketView))
         {
             HandshakeReceived?.Invoke(handshakePacketView);
             return;
         }
 
-        if (decryptor is null)
-        {
-            var exception = new MapleSessionException("Could not initialize vectors.");
-            Error?.Invoke(exception);
-
-            return;
-        }
-
-        if (packet.RequiresContinuation)
-        {
-            _stream.SaveForContinuation(packet.Id, packet.Data);
-        }
-
+        HandlePacketContinuation(packet);
         Decrypt(ref packet);
         PacketDecrypted?.Invoke(new MapleSessionViewEventArgs(args, packet));
 
-        if (packet.Leftovers.Length == 0) return;
-
-        int newOffset = packet.ParentReaded + packet.Header.Length + packet.Payload.Length - packet.ContinuationLength;
-        ProcessPayload(args, packet.Leftovers, packet.Id, newOffset);
+        ProcessLeftovers(args, packet);
     }
 
     public void ProcessDecrypted(MapleSessionViewEventArgs args)
@@ -73,20 +53,53 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : IDisposable
             return;
         }
 
-        var outBuffer = _stream.GetOrCreateBuffer(packet.Id, packet.TotalLength - packet.ContinuationLength, packet.IsIncoming);
-
+        var outBuffer = GetOutputBuffer(packet);
         Encrypt(ref packet);
+        CopyToOutputBuffer(packet, outBuffer);
 
-        packet.Data[packet.ContinuationLength..].CopyTo(outBuffer.AsSpan(packet.ParentReaded));
-
-        if (packet.Leftovers.Length == 0)
+        if (packet.Leftovers.IsEmpty)
         {
-            var finalData = _stream.Finalize(packet.Id, packet.IsIncoming);
+            FinalizeAndSend(packet, args);
+        }
+    }
 
-            if (finalData is null) return;
+    private byte[]? GetIV(bool isIncoming)
+        => isIncoming ? _sessionManager.Decryptor?.RIV : _sessionManager.Decryptor?.SIV;
 
+    private static MaplePacketView ParsePacket(Span<byte> payload, byte[]? iv, WinDivertPacketViewEventArgs args, long? parentId, int? parentReaded)
+        => PacketFactory.Parse(payload, iv, args.IsIncoming, args.Address.Timestamp, parentId, parentReaded);
+
+    private void HandlePacketContinuation(MaplePacketView packet)
+    {
+        if (packet.RequiresContinuation)
+        {
+            _stream.SaveForContinuation(packet.Id, packet.Data);
+        }
+    }
+
+    private void ProcessLeftovers(WinDivertPacketViewEventArgs args, MaplePacketView packet)
+    {
+        if (packet.Leftovers.Length == 0) return;
+
+        int newOffset = packet.ParentReaded + packet.Header.Length + packet.Payload.Length - packet.ContinuationLength;
+        ProcessPayload(args, packet.Leftovers, packet.Id, newOffset);
+    }
+
+    private MapleBuffer GetOutputBuffer(MaplePacketView packet) =>
+    _stream.GetOrCreateBuffer(packet.Id, packet.TotalLength - packet.ContinuationLength, packet.IsIncoming);
+
+    private static void CopyToOutputBuffer(MaplePacketView packet, MapleBuffer outBuffer)
+    {
+        packet.Data[packet.ContinuationLength..].CopyTo(outBuffer.AsSpan(packet.ParentReaded));
+    }
+
+    private void FinalizeAndSend(MaplePacketView packet, MapleSessionViewEventArgs args)
+    {
+        var finalData = _stream.Finalize(packet.Id, packet.IsIncoming);
+
+        if (finalData is not null)
+        {
             ReplaceAndAsend(finalData.Value.AsSpan(), args);
-
             _stream.CleanPayload(packet.Id);
         }
     }
