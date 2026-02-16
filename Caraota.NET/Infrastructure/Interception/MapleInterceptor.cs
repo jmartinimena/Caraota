@@ -1,13 +1,16 @@
-﻿using Caraota.NET.Common.Attributes;
-using Caraota.NET.Common.Events;
-using Caraota.NET.Common.Utils;
-using Caraota.NET.Core.Models.Views;
-using Caraota.NET.Core.Session;
-using Caraota.NET.Infrastructure.TCP;
-using System.Diagnostics;
+﻿using System.Runtime;
+
 using System.Reflection;
-using System.Runtime;
-using static Caraota.NET.Infrastructure.Interception.PacketSide;
+
+using System.Diagnostics;
+
+using Caraota.NET.Core.Session;
+
+using Caraota.NET.Infrastructure.TCP;
+
+using Caraota.NET.Common.Utils;
+using Caraota.NET.Common.Events;
+using Caraota.NET.Common.Attributes;
 
 namespace Caraota.NET.Infrastructure.Interception
 {
@@ -21,6 +24,60 @@ namespace Caraota.NET.Infrastructure.Interception
 
         private MapleSession _session = default!;
         private WinDivertWrapper _wrapper = default!;
+
+        public void StartListening(int port)
+        {
+            var wrapper = WinDivertFactory.CreateForTcp(port);
+            StartListeningInternal(wrapper);
+        }
+
+        public void StartListening(PortRange portRange)
+        {
+            var wrapper = WinDivertFactory.CreateForTcp(portRange);
+            StartListeningInternal(wrapper);
+        }
+
+        private void StartListeningInternal(WinDivertWrapper wrapper)
+        {
+            var currentProcess = Process.GetCurrentProcess();
+            currentProcess.PriorityClass = ProcessPriorityClass.RealTime;
+            GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
+
+            _wrapper = wrapper;
+            _wrapper.Error += (e) => ErrorOcurred?.Invoke(e);
+            _wrapper.PacketReceived += OnPacketReceived;
+            _wrapper.Start();
+
+            _session = new MapleSession(_wrapper);
+            _session.PacketDecrypted += OnPacketDecrypted;
+            _session.Error += (e) => ErrorOcurred?.Invoke(e);
+            _session.HandshakeReceived += (args) => HandshakeReceived?.Invoke(args);
+        }
+
+        private void OnPacketReceived(WinDivertPacketViewEventArgs args)
+        {
+            if (!TcpHelper.TryExtractPayload(args.Packet,
+                out Span<byte> payload)) return;
+            
+            _session.ProcessPayload(args, payload);
+        }
+
+        private void OnPacketDecrypted(MapleSessionViewEventArgs args)
+        {
+            var packetSide = args.MaplePacketView.IsIncoming ? Incoming : Outgoing;
+
+            if (packetSide.TryGetHandler(args.MaplePacketView.Opcode, out var handler))
+            {
+                handler?.Invoke(ref args.MaplePacketView);
+            }
+
+            if (!args.MaplePacketView.RequiresContinuation)
+            {
+                packetSide.Dispatch(new MaplePacketEventArgs(args));
+            }
+
+            _session?.ProcessDecrypted(args);
+        }
 
         public void SetHandlers<T>() where T : class, new()
         {
@@ -56,57 +113,6 @@ namespace Caraota.NET.Infrastructure.Interception
                     ErrorOcurred?.Invoke(e);
                 }
             }
-        }
-
-        public void StartListening(int port)
-        {
-            var wrapper = WinDivertFactory.CreateForTcp(port);
-            StartListening(wrapper);
-        }
-
-        public void StartListening(PortRange portRange)
-        {
-            var wrapper = WinDivertFactory.CreateForTcp(portRange);
-            StartListening(wrapper);
-        }
-
-        private void StartListening(WinDivertWrapper wrapper)
-        {
-            var currentProcess = Process.GetCurrentProcess();
-            currentProcess.PriorityClass = ProcessPriorityClass.RealTime;
-            GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
-
-            _wrapper = wrapper;
-            _wrapper.Error += (e) => ErrorOcurred?.Invoke(e);
-            _wrapper.PacketReceived += OnPacketReceived;
-            _wrapper.Start();
-
-            _session = new MapleSession(_wrapper);
-            _session.PacketDecrypted += OnPacketDecrypted;
-            _session.Error += (e) => ErrorOcurred?.Invoke(e);
-            _session.HandshakeReceived += (args) => HandshakeReceived?.Invoke(args);
-        }
-
-        private void OnPacketReceived(WinDivertPacketViewEventArgs args)
-        {
-            if (!TcpHelper.TryExtractPayload(args.Packet,
-                out Span<byte> payload)) return;
-            
-            _session.ProcessPayload(args, payload);
-        }
-
-        private void OnPacketDecrypted(MapleSessionViewEventArgs args)
-        {
-            var maplePacketEventArgs = new MaplePacketEventArgs(args);
-            var packetSide = args.MaplePacketView.IsIncoming ? Incoming : Outgoing;
-
-            if (packetSide.TryGetFunc(args.MaplePacketView.Opcode, out var func))
-                func?.Invoke(ref args.MaplePacketView);
-
-            if (!args.MaplePacketView.RequiresContinuation)
-                packetSide.Dispatch(maplePacketEventArgs);
-
-            _session.ProcessDecrypted(args);
         }
 
         public void Dispose()

@@ -1,23 +1,27 @@
 ﻿using System.Reflection;
+
 using System.Buffers.Binary;
+
 using System.ComponentModel;
+
 using System.Linq.Expressions;
-using System.Runtime.CompilerServices;
+
 using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 
 using WinDivertSharp;
 
 using Caraota.NET.Common.Utils;
 using Caraota.NET.Common.Events;
+
 using Caraota.NET.Infrastructure.TCP;
-using System.Buffers;
 
 namespace Caraota.NET.Infrastructure.Interception
 {
     internal sealed class WinDivertWrapper : IWinDivertSender, IDisposable
     {
         public event Action<Exception>? Error;
-        public event Action<WinDivertPacketViewEventArgs>? PacketReceived;
+        public event DivertPacketReceivedDelegate? PacketReceived;
 
         private bool _isRunning;
         private Thread? _captureThread;
@@ -188,7 +192,9 @@ namespace Caraota.NET.Infrastructure.Interception
         public void Dispose()
         {
             Stop();
+
             _tcpStackArchitect.Dispose();
+
             GC.SuppressFinalize(this);
         }
     }

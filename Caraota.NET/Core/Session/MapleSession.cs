@@ -13,8 +13,8 @@ namespace Caraota.NET.Core.Session;
 public sealed class MapleSession(IWinDivertSender winDivertSender) : IDisposable
 {
     public event Action<Exception>? Error;
-    public event Action<MapleSessionViewEventArgs>? PacketDecrypted;
-    public event Action<HandshakePacketViewEventArgs>? HandshakeReceived;
+    public event PacketDecryptedDelegate? PacketDecrypted;
+    public event HandshakeReceivedDelegate? HandshakeReceived;
 
     private readonly MapleStream _stream = new();
     private readonly MapleSessionManager _sessionManager = new(winDivertSender);
@@ -117,6 +117,7 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : IDisposable
     public void Dispose()
     {
         _stream.Dispose();
+
         GC.SuppressFinalize(this);
     }
 }

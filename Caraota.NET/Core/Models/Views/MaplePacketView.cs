@@ -85,7 +85,7 @@ namespace Caraota.NET.Core.Models.Views
 
         public T Read<T>(int? pos = null) where T : unmanaged
         {
-            var result = LittleEndianReader.Read<T>(Payload[2..], pos ?? _readOffset);
+            var result = LittleEndian.Read<T>(Payload[2..], pos ?? _readOffset);
 
             if (!pos.HasValue)
             {
@@ -98,7 +98,7 @@ namespace Caraota.NET.Core.Models.Views
 
         public string ReadString(int? pos = null)
         {
-            var result = LittleEndianReader.ReadString(Payload[2..], pos ?? _readOffset);
+            var result = LittleEndian.ReadString(Payload[2..], pos ?? _readOffset);
 
             if(!pos.HasValue)
             {
@@ -111,7 +111,7 @@ namespace Caraota.NET.Core.Models.Views
 
         public void Write<T>(T value, int? pos = null) where T : unmanaged
         {
-            LittleEndianWriter.Write(Payload[2..], value, pos ?? _writeOffset);
+            LittleEndian.Write(Payload[2..], value, pos ?? _writeOffset);
 
             if(!pos.HasValue)
             {
@@ -122,7 +122,7 @@ namespace Caraota.NET.Core.Models.Views
 
         public void WriteString(string value, int? pos = null)
         {
-            Payload = LittleEndianWriter.WriteString(Payload, value, pos ?? _writeOffset);
+            Payload = LittleEndian.WriteString(Payload, value, pos ?? _writeOffset);
 
             if (!pos.HasValue)
             {

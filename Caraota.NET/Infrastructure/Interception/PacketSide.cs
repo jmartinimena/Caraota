@@ -1,5 +1,4 @@
 ﻿using Caraota.NET.Common.Events;
-using Caraota.NET.Core.Models.Views;
 
 using System.Threading.Channels;
 
@@ -7,8 +6,7 @@ namespace Caraota.NET.Infrastructure.Interception
 {
     public sealed class PacketSide : IDisposable
     {
-        public event Action<MaplePacketEventArgs>? Received;
-        public delegate void PacketHandlerDelegate(ref MaplePacketView packet);
+        public event PacketReceivedDelegate? Received;
 
         private readonly CancellationTokenSource _cts = new();
         private readonly Dictionary<ushort, PacketHandlerDelegate> _handlers = [];
@@ -56,7 +54,7 @@ namespace Caraota.NET.Infrastructure.Interception
             return _handlers.Remove(opcode);
         }
 
-        internal bool TryGetFunc(ushort opcode, out PacketHandlerDelegate handler)
+        internal bool TryGetHandler(ushort opcode, out PacketHandlerDelegate handler)
         {
             return _handlers.TryGetValue(opcode, out handler!);
         }
@@ -72,9 +70,11 @@ namespace Caraota.NET.Infrastructure.Interception
         public void Dispose()
         {
             _channel.Writer.TryComplete();
+
             _cts.Cancel();
-            _handlers.Clear();
             _cts.Dispose();
+
+            _handlers.Clear();
 
             GC.SuppressFinalize(this);
         }
