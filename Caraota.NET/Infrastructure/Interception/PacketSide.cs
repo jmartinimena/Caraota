@@ -1,16 +1,17 @@
-﻿using System.Threading.Channels;
-using Caraota.Crypto.State;
-using Caraota.NET.Common.Events;
+﻿using Caraota.NET.Common.Events;
 using Caraota.NET.Core.Models.Views;
+
+using System.Threading.Channels;
 
 namespace Caraota.NET.Infrastructure.Interception
 {
     public sealed class PacketSide : IDisposable
     {
         public event Action<MaplePacketEventArgs>? Received;
+        public delegate void PacketHandlerDelegate(ref MaplePacketView packet);
 
         private readonly CancellationTokenSource _cts = new();
-        private readonly Dictionary<ushort, Action<MaplePacketView>> _handlers = [];
+        private readonly Dictionary<ushort, PacketHandlerDelegate> _handlers = [];
         private readonly Channel<MaplePacketEventArgs> _channel = Channel.CreateBounded<MaplePacketEventArgs>(new BoundedChannelOptions(10000)
         {
             FullMode = BoundedChannelFullMode.DropOldest,
@@ -45,9 +46,9 @@ namespace Caraota.NET.Infrastructure.Interception
             _channel.Writer.TryWrite(packet);
         }
 
-        public bool Register(ushort opcode, Action<MaplePacketView> action)
+        public bool Register(ushort opcode, PacketHandlerDelegate handler)
         {
-            return _handlers.TryAdd(opcode, action);
+            return _handlers.TryAdd(opcode, handler);
         }
 
         public bool Unregister(ushort opcode)
@@ -55,9 +56,9 @@ namespace Caraota.NET.Infrastructure.Interception
             return _handlers.Remove(opcode);
         }
 
-        internal bool TryGetFunc(ushort opcode, out Action<MaplePacketView> action)
+        internal bool TryGetFunc(ushort opcode, out PacketHandlerDelegate handler)
         {
-            return _handlers.TryGetValue(opcode, out action!);
+            return _handlers.TryGetValue(opcode, out handler!);
         }
 
         private void CleanupRemainingPackets()

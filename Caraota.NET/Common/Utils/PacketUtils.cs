@@ -2,7 +2,7 @@
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 
-namespace Caraota.Crypto.Utils
+namespace Caraota.NET.Common.Utils
 {
     public static class PacketUtils
     {

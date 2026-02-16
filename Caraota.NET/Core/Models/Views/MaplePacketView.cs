@@ -1,7 +1,7 @@
 ﻿using System.Buffers.Binary;
-
-using Caraota.Crypto.Utils;
-using Caraota.NET.Core.IO;
+using System.Runtime.CompilerServices;
+using Caraota.NET.Common.Utils;
+using Caraota.NET.IO;
 
 namespace Caraota.NET.Core.Models.Views
 {
@@ -12,8 +12,8 @@ namespace Caraota.NET.Core.Models.Views
     /// </summary>
     public ref struct MaplePacketView
     {
-        private MaplePacketReader _reader;
-        private MaplePacketWriter _writer;
+        private int _readOffset;
+        private int _writeOffset;
 
         private static long _counter = 0;
         /// <summary> Identificador único del paquete basado en el timestamp de alta resolución. </summary>
@@ -30,7 +30,7 @@ namespace Caraota.NET.Core.Models.Views
         /// <summary> Vista del Vector de Inicialización (IV) utilizado para este paquete específico. </summary>
         public Span<byte> IV { get; init; } = new byte[4];
         /// <summary> Segmento mutable que contiene el contenido del paquete. Se modifica directamente durante el cifrado/descifrado. </summary>
-        public Span<byte> Payload { get; init; }
+        public Span<byte> Payload { get; set; }
 
         /// <summary> Segmento que contiene datos adicionales en el buffer que no pertenecen a este paquete (fragmentación TCP). </summary>
         public Span<byte> Leftovers { get; set; }
@@ -83,26 +83,52 @@ namespace Caraota.NET.Core.Models.Views
             Leftovers = data[totalProcessed..];
         }
 
-        public MaplePacketReader GetReader()
+        public T Read<T>(int? pos = null) where T : unmanaged
         {
-            if(_reader.IsEmpty())
+            var result = LittleEndianReader.Read<T>(Payload[2..], pos ?? _readOffset);
+
+            if (!pos.HasValue)
             {
-                _reader = new MaplePacketReader(this);
+                var size = Unsafe.SizeOf<T>();
+                _readOffset += size;
             }
 
-            return _reader;
+            return result;
         }
 
-        public MaplePacketWriter GetWritter()
+        public string ReadString(int? pos = null)
         {
-            if(_writer.IsEmpty())
+            var result = LittleEndianReader.ReadString(Payload[2..], pos ?? _readOffset);
+
+            if(!pos.HasValue)
             {
-                _writer = new MaplePacketWriter(this);
+                var size = sizeof(ushort) + result.Length;
+                _readOffset += size;
             }
 
-            return _writer;
+            return result;
         }
 
-        public readonly void Release() => _writer.Release();
+        public void Write<T>(T value, int? pos = null) where T : unmanaged
+        {
+            LittleEndianWriter.Write(Payload[2..], value, pos ?? _writeOffset);
+
+            if(!pos.HasValue)
+            {
+                var size = Unsafe.SizeOf<T>();
+                _writeOffset += size;
+            }
+        }
+
+        public void WriteString(string value, int? pos = null)
+        {
+            Payload = LittleEndianWriter.WriteString(Payload, value, pos ?? _writeOffset);
+
+            if (!pos.HasValue)
+            {
+                var size = sizeof(ushort) + value.Length;
+                _writeOffset += size;
+            }
+        }
     }
 }

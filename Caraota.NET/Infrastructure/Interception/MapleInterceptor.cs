@@ -1,15 +1,13 @@
-﻿using System.Runtime;
-using System.Reflection;
-using System.Diagnostics;
-
-using Caraota.NET.Common.Utils;
+﻿using Caraota.NET.Common.Attributes;
 using Caraota.NET.Common.Events;
-using Caraota.NET.Common.Attributes;
-
-using Caraota.NET.Core.Session;
+using Caraota.NET.Common.Utils;
 using Caraota.NET.Core.Models.Views;
-
+using Caraota.NET.Core.Session;
 using Caraota.NET.Infrastructure.TCP;
+using System.Diagnostics;
+using System.Reflection;
+using System.Runtime;
+using static Caraota.NET.Infrastructure.Interception.PacketSide;
 
 namespace Caraota.NET.Infrastructure.Interception
 {
@@ -23,8 +21,6 @@ namespace Caraota.NET.Infrastructure.Interception
 
         private MapleSession _session = default!;
         private WinDivertWrapper _wrapper = default!;
-
-        private readonly Stopwatch _sw = new();
 
         public void SetHandlers<T>() where T : class, new()
         {
@@ -50,8 +46,8 @@ namespace Caraota.NET.Infrastructure.Interception
                 try
                 {
                     object? finalTarget = h.Method.IsStatic ? null : target;
-                    var handlerDelegate = (Action<MaplePacketView>)Delegate.CreateDelegate(
-                        typeof(Action<MaplePacketView>), finalTarget, h.Method);
+                    var handlerDelegate = (PacketHandlerDelegate)Delegate.CreateDelegate(
+                        typeof(PacketHandlerDelegate), finalTarget, h.Method);
 
                     Outgoing.Register(h.Attr!.Opcode, handlerDelegate);
                 }
@@ -96,7 +92,7 @@ namespace Caraota.NET.Infrastructure.Interception
             if (!TcpHelper.TryExtractPayload(args.Packet,
                 out Span<byte> payload)) return;
             
-            _session.Decrypt(args, payload);
+            _session.ProcessPayload(args, payload);
         }
 
         private void OnPacketDecrypted(MapleSessionViewEventArgs args)
@@ -105,12 +101,12 @@ namespace Caraota.NET.Infrastructure.Interception
             var packetSide = args.MaplePacketView.IsIncoming ? Incoming : Outgoing;
 
             if (packetSide.TryGetFunc(args.MaplePacketView.Opcode, out var func))
-                func?.Invoke(args.MaplePacketView);
+                func?.Invoke(ref args.MaplePacketView);
 
             if (!args.MaplePacketView.RequiresContinuation)
                 packetSide.Dispatch(maplePacketEventArgs);
 
-            _session.Encrypt(args);
+            _session.ProcessDecrypted(args);
         }
 
         public void Dispose()

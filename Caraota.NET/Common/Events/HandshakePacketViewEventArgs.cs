@@ -1,4 +1,4 @@
-﻿using Caraota.Crypto.Utils;
+﻿using Caraota.NET.Common.Utils;
 using System.Buffers.Binary;
 
 namespace Caraota.NET.Common.Events
