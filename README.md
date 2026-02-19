@@ -14,16 +14,14 @@
 
 </div>
 
-# **Caraota: Ultra-High-Performance Packet Interceptor & Logger for MapleStory v62**
+# **Caraota: Packet Interceptor & Logger for MapleStory v62**
 
-**Caraota** is a network interception engine purpose-built for protocol research on MapleStory private servers (specifically v62). Optimized for **nanosecond-scale** packet processing, Caraota ensures near-zero latency and absolute stability of the Initialization Vector (IV).
+**Caraota** is a network interception engine purpose-built for protocol research on MapleStory private servers (specifically v62). Caraota ensures near-zero latency and absolute stability of the Initialization Vector (IV).
 
 [Check out the Wiki](https://github.com/jmartinimena/Caraota/wiki) for examples.
 ---
 
 ## 🚀 Performance Benchmarks
-
-I have pushed C# and .NET 10 to their technical limits, reducing the per-packet processing time (receive > decrypt > encrypt > send) from **1,000,000 ns** to just **~70,000 ns** (0.07 ms).
 
 *Tests performed on: Ryzen 5 5600X 3.7GHz, 32 GB DDR4 3600MT/s*
 
