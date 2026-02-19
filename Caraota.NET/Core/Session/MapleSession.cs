@@ -1,10 +1,11 @@
-﻿using Caraota.Crypto.State;
-using Caraota.NET.Common.Events;
-using Caraota.NET.Common.Exceptions;
+﻿using Caraota.NET.Common.Events;
+
 using Caraota.NET.Core.Models.Views;
-using Caraota.NET.Infrastructure.Interception;
-using Caraota.NET.Protocol.Parsing;
+
 using Caraota.NET.Protocol.Stream;
+using Caraota.NET.Protocol.Parsing;
+
+using Caraota.NET.Infrastructure.Interception;
 
 namespace Caraota.NET.Core.Session;
 
@@ -32,12 +33,14 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : IDisposable
 
         if (_sessionManager.Initialize(args, packet, out var handshakePacketView))
         {
-            HandshakeReceived?.Invoke(handshakePacketView);
-            return;
+            HandshakeReceived?.Invoke(handshakePacketView); return;
         }
+
+        if (!_sessionManager.Success) return;
 
         HandlePacketContinuation(packet);
         Decrypt(ref packet);
+
         PacketDecrypted?.Invoke(new MapleSessionViewEventArgs(args, packet));
 
         ProcessLeftovers(args, packet);
@@ -53,13 +56,12 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : IDisposable
             return;
         }
 
-        var outBuffer = GetOutputBuffer(packet);
         Encrypt(ref packet);
-        CopyToOutputBuffer(packet, outBuffer);
+        CopyToOutputBuffer(packet, GetOutputBuffer(packet));
 
         if (packet.Leftovers.IsEmpty)
         {
-            FinalizeAndSend(packet, args);
+            FinalizeAndSend(args);
         }
     }
 
@@ -93,8 +95,10 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : IDisposable
         packet.Data[packet.ContinuationLength..].CopyTo(outBuffer.AsSpan(packet.ParentReaded));
     }
 
-    private void FinalizeAndSend(MaplePacketView packet, MapleSessionViewEventArgs args)
+    private void FinalizeAndSend(MapleSessionViewEventArgs args)
     {
+        var packet = args.MaplePacketView;
+
         var finalData = _stream.Finalize(packet.Id, packet.IsIncoming);
 
         if (finalData is not null)
@@ -102,6 +106,8 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : IDisposable
             ReplaceAndAsend(finalData.Value.AsSpan(), args);
             _stream.CleanPayload(packet.Id);
         }
+
+        packet.Release();
     }
 
     private void EncryptAndSend(MapleSessionViewEventArgs args)
@@ -110,6 +116,8 @@ public sealed class MapleSession(IWinDivertSender winDivertSender) : IDisposable
 
         Encrypt(ref packet);
         ReplaceAndAsend(packet.Data[packet.ContinuationLength..], args);
+
+        packet.Release();
     }
 
     private void Encrypt(ref MaplePacketView packet)

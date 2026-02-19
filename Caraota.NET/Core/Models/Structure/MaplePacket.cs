@@ -24,8 +24,8 @@ namespace Caraota.NET.Core.Models.Structure
         public readonly string IVStr => Convert.ToHexString(IV.Span);
         public readonly string HeaderStr => Convert.ToHexString(Header.Span);
         public readonly string PayloadStr => Convert.ToHexString(Payload.Span);
-        public readonly string ToHexString() => Convert.ToHexString(Data.Span);
         public readonly string FormattedTime => PacketUtils.GetRealTime(Timestamp).ToString("HH:mm:ss:fff");
+        public readonly string ToHexString() => Convert.ToHexString(Data.Span);
 
         public MaplePacket(MaplePacketView maplePacket)
         {

@@ -1,5 +1,8 @@
-﻿using System.Buffers.Binary;
+﻿using System.Buffers;
+using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
+
+using Caraota.Crypto.State;
 
 using Caraota.NET.IO;
 using Caraota.NET.Common.Utils;
@@ -24,12 +27,11 @@ namespace Caraota.NET.Core.Models.Views
         public readonly bool IsIncoming { get; init; }
 
         /// <summary> Vista de los 4 bytes del header cifrado de MapleStory. </summary>
-        public ReadOnlySpan<byte> Header { get; init; }
+        public Span<byte> Header { get; set; }
         /// <summary> Vista completa del paquete (Header + Payload) sin incluir leftovers. </summary>
         public Span<byte> Data { get; set; }
 
-        /// <summary> Vista del Vector de Inicialización (IV) utilizado para este paquete específico. </summary>
-        public Span<byte> IV { get; init; } = new byte[4];
+
         /// <summary> Segmento mutable que contiene el contenido del paquete. Se modifica directamente durante el cifrado/descifrado. </summary>
         public Span<byte> Payload { get; set; }
 
@@ -46,9 +48,12 @@ namespace Caraota.NET.Core.Models.Views
 
         public long Timestamp { get; init; }
 
+        /// <summary> Vector de Inicialización (IV) utilizado para este paquete específico. </summary>
+        private readonly byte[] _iv = ArrayPool<byte>.Shared.Rent(4);
+        public readonly Span<byte> IV => _iv.AsSpan(0, 4);
+
         /// <summary> Opcode del paquete, extraído de los primeros 2 bytes del Payload descifrado. </summary>
         public readonly ushort Opcode => BinaryPrimitives.ReadUInt16LittleEndian(Payload[..2]);
-
 
         /// <summary>
         /// Inicializa una nueva instancia de <see cref="MaplePacketView"/> segmentando el buffer original in-place.
@@ -76,6 +81,7 @@ namespace Caraota.NET.Core.Models.Views
             }
 
             int totalProcessed = payloadLength + 4;
+
             iv.CopyTo(IV);
 
             Header = data[..4];
@@ -106,7 +112,7 @@ namespace Caraota.NET.Core.Models.Views
         {
             var result = LittleEndian.ReadString(Payload, pos ?? _readOffset);
 
-            if(!pos.HasValue)
+            if (!pos.HasValue)
             {
                 var size = sizeof(ushort) + result.Length;
                 _readOffset += size;
@@ -116,15 +122,13 @@ namespace Caraota.NET.Core.Models.Views
         }
 
         public readonly ReadOnlySpan<byte> ReadBytes(int start, int len)
-        {
-            return LittleEndian.ReadBytes(Payload, start, len);
-        }
+            => LittleEndian.ReadBytes(Payload, start, len);
 
         public void Write<T>(T value, int? pos = null) where T : unmanaged
         {
             LittleEndian.Write(Payload, value, pos ?? _writeOffset);
 
-            if(!pos.HasValue)
+            if (!pos.HasValue)
             {
                 var size = Unsafe.SizeOf<T>();
                 _writeOffset += size;
@@ -134,12 +138,18 @@ namespace Caraota.NET.Core.Models.Views
         public void WriteString(string value, int? pos = null)
         {
             Payload = LittleEndian.WriteString(Payload, value, pos ?? _writeOffset);
+            PacketUtils.GetHeader(IV, Payload.Length, IsIncoming, MapleCrypto.Version).CopyTo(Header);
 
             if (!pos.HasValue)
             {
                 var size = sizeof(ushort) + value.Length;
                 _writeOffset += size;
             }
+        }
+
+        public readonly void Release()
+        {
+            ArrayPool<byte>.Shared.Return(_iv);
         }
     }
 }
