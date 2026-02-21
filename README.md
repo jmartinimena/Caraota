@@ -3,8 +3,6 @@
 ![Encryption](https://img.shields.io/badge/Crypto-Shanda%20%2F%20AES-informational?style=flat)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-# **Caraota: Packet Interceptor & Logger for MapleStory v62**
-
 **Caraota** is a network interception engine purpose-built for protocol research on MapleStory private servers (specifically v62). Caraota ensures near-zero latency and absolute stability of the Initialization Vector (IV).
 
 [Check out the Wiki](https://github.com/jmartinimena/Caraota/wiki) for examples.
