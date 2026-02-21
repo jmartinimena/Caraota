@@ -1,14 +1,7 @@
-<div align="center">
-  
-<img width="96" height="96" alt="caraota-logo" src="https://github.com/user-attachments/assets/d68c7a6e-3042-4559-b4f1-2f7ff7b2337a" />
-
 # Caraota
-
 [![Runtime](https://img.shields.io/badge/.NET-10.0-512bd4)](https://dotnet.microsoft.com/)
 ![Encryption](https://img.shields.io/badge/Crypto-Shanda%20%2F%20AES-informational?style=flat)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-
-</div>
 
 # **Caraota: Packet Interceptor & Logger for MapleStory v62**
 
