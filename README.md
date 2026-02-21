@@ -7,10 +7,7 @@
 ![GitHub last commit](https://img.shields.io/github/last-commit/jmartinimena/Caraota?style=flat&color=brightgreen)
 [![.NET 10](https://img.shields.io/badge/-%2010.0-512BD4?style=flat&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 ![C#](https://img.shields.io/badge/C%23-14.0-239120?style=flat&logo=csharp)
-![Latency](https://img.shields.io/badge/Latency-70%C2%B5s-blueviolet?style=flat&logo=speedtest)
-![Memory](https://img.shields.io/badge/Memory-Zero--Alloc-success?style=flat)
 ![Encryption](https://img.shields.io/badge/Crypto-Shanda%20%2F%20AES-informational?style=flat)
-![License](https://img.shields.io/github/license/jmartinimena/Caraota?style=flat&color=yellow)
 
 </div>
 
