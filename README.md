@@ -5,8 +5,8 @@
 # Caraota
 
 ![GitHub last commit](https://img.shields.io/github/last-commit/jmartinimena/Caraota?style=flat&color=brightgreen)
-[![.NET 10](https://img.shields.io/badge/-%2010.0-512BD4?style=flat&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
-![C#](https://img.shields.io/badge/C%23-14.0-239120?style=flat&logo=csharp)
+[![Runtime](https://img.shields.io/badge/.NET-10.0-512bd4)](https://dotnet.microsoft.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 ![Encryption](https://img.shields.io/badge/Crypto-Shanda%20%2F%20AES-informational?style=flat)
 
 </div>
